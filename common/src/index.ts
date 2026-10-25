@@ -71,3 +71,4 @@ export {
 
 export { GlobalVariable, InstanceStreamListener, MCServerStatus, StorageSubsystem };
 export * from "./passport";
+export * from "./security/command_sanitizer";

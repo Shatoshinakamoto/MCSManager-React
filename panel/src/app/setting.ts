@@ -4,6 +4,8 @@ import SystemConfig, { DataPlaneMode } from "./entity/setting";
 import StorageSystem from "./common/system_storage";
 import { i18next } from "./i18n";
 import { v4 } from "uuid";
+import { randomBytes } from "crypto";
+import { standardPassport } from "mcsmanager-common";
 let systemConfig: SystemConfig | null = null;
 
 // System persistence configuration table
@@ -21,6 +23,19 @@ export function initSystemConfig() {
   if (systemConfig.language) i18next.changeLanguage(systemConfig.language);
   if (!systemConfig.panelId) {
     systemConfig.panelId = v4();
+    saveSystemConfig(systemConfig);
+  }
+  // Johnnykins: generate this panel's passport secrets once (CSPRNG).
+  const jp = systemConfig.johnnykins.passport;
+  if (!jp.panel.secret || !jp.panel.salt) {
+    jp.panel = standardPassport.generateSecretPair();
+    saveSystemConfig(systemConfig);
+  }
+  if (!jp.legacy.panelsSha256.password || !jp.legacy.panelsSha256.salt) {
+    jp.legacy.panelsSha256 = {
+      password: randomBytes(32).toString("base64url"),
+      salt: randomBytes(16).toString("base64url")
+    };
     saveSystemConfig(systemConfig);
   }
 }

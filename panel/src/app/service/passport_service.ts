@@ -72,7 +72,7 @@ export function loginSuccess(ctx: Koa.ParameterizedContext, userName: string) {
 
   logger.info($t("TXT_CODE_42036f92"));
   logger.info(`[LOGIN] IP: ${ip} Login ${userName} successful!`);
-  logger.info(`[LOGIN] Token: ${ctx.session["token"]}`);
+  // SECURITY: upstream logged the session token here; it is a bearer value (CWE-532), so it is no longer logged.
   logger.info($t("TXT_CODE_42036f92"));
 
   return String(ctx.session["token"]);

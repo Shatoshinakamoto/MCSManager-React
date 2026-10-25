@@ -1,0 +1,15 @@
+@keyframes global-fade-up-animation {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0px);
+    opacity: 1;
+  }
+}
+
+.fade-up-item > * {
+  animation: global-fade-up-animation 0.2s 1 both;
+  animation-delay: inherit;
+}

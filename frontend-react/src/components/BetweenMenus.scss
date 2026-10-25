@@ -1,0 +1,38 @@
+// Ported from components/BetweenMenus.vue styles (:deep() flattened).
+
+.between-menus-container,
+.menus-item-center,
+.menus-item-left,
+.menus-item-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  flex: 1;
+}
+
+.between-menus-container {
+  flex: unset !important;
+  justify-content: space-between;
+}
+
+.menus-item-center {
+  justify-content: center;
+  width: 30%;
+}
+.menus-item-left {
+  justify-content: flex-start;
+}
+.menus-item-right {
+  justify-content: flex-end;
+}
+
+@media (max-width: 585px) {
+  .menus-item-center {
+    flex: unset !important;
+    width: 100% !important;
+  }
+  .phone-menus-item-right {
+    justify-content: flex-start !important;
+  }
+}

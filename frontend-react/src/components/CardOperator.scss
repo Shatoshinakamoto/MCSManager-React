@@ -1,0 +1,65 @@
+// Ported from components/CardOperator.vue styles (:deep() flattened).
+@use "@/assets/global.scss" as *;
+
+
+
+.base {
+  @extend .global-text-color;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--float-box-bg-color);
+  backdrop-filter: saturate(180%) blur(16px);
+  font-size: 12px;
+  border: 1px dashed var(--gray-border-color);
+  font-size: 12px;
+  border-radius: 6px;
+  transition: all 0.4s;
+}
+
+.number-card {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: -4px;
+  z-index: 10;
+  display: flex;
+  > div {
+    min-width: 120px;
+    margin: 0px 6px;
+    margin-bottom: 8px;
+    padding: 2px 4px;
+  }
+}
+.number-card-W {
+  @extend .base;
+}
+.number-card-H {
+  @extend .base;
+}
+.layout-card-design-btn {
+  @extend .base;
+  width: 28px;
+  position: absolute;
+  left: -4px;
+  top: -4px;
+
+  i {
+    margin: 4px;
+    cursor: pointer;
+    transition: all 0.4s;
+  }
+
+  i:hover {
+    opacity: 0.9;
+    transform: scale(1.2);
+    color: var(--color-primary);
+  }
+}
+
+.layout-card-design-btn:hover {
+  border: 1px dashed var(--color-primary);
+  // transform: scale(1.04);
+}

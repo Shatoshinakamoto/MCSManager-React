@@ -11,6 +11,8 @@ import { operationLogger } from "../service/operation_logger";
 import { check, checkBanIp, getUserFromCtx, login, logout } from "../service/passport_service";
 import userSystem, { TwoFactorError } from "../service/user_service";
 import { systemConfig } from "../setting";
+import { legacyPassport, parsePassportMode } from "mcsmanager-common";
+import { legacyPassportStore } from "../service/johnnykins/passport_client";
 
 const router = new Router({ prefix: "/auth" });
 
@@ -155,6 +157,34 @@ router.all(
     } catch (err) {
       ctx.body = err;
     }
+  }
+);
+
+// [Public Permission]
+// Johnnykins legacy mode: a daemon asks whether this panel issued the passport
+// it was just shown. Ported from the fork's /api/auth/daemon-verifications.
+// SECURITY: fixed regex comparison (auth bypass, CWE-185/CWE-287) with
+// constant-time matching; passports are single use (CWE-294); always returns
+// a body so the daemon never waits on a 404 (the fork's ban branch returned
+// nothing). Rate limited by the default speed limit (NIST AC-7).
+router.get(
+  "/daemon-verifications",
+  permission({ token: false, level: null }),
+  async (ctx: Koa.ParameterizedContext) => {
+    const jp = systemConfig?.johnnykins?.passport;
+    if (!jp || parsePassportMode(jp.mode) !== "johnnykins-legacy" || !checkBanIp(ctx)) {
+      ctx.body = { result: false };
+      return;
+    }
+    const type = legacyPassport.parseLegacyPassportType(Number(ctx.headers["johnnykins-passport-type"]));
+    const presented: Record<string, unknown> = {};
+    for (const f of legacyPassport.legacyFields(type)) {
+      const h = ctx.headers[legacyPassport.LEGACY_HEADERS[f as keyof typeof legacyPassport.LEGACY_HEADERS]];
+      presented[f] = typeof h === "string" ? h : undefined;
+    }
+    const result = legacyPassportStore.take(type, presented);
+    if (!result) logger.warn(`[Johnnykins] Legacy passport verification failed from ${ctx.ip}`);
+    ctx.body = { result };
   }
 );
 

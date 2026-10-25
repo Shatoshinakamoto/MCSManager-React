@@ -30,9 +30,9 @@ Boot order matches `main.ts`: panel status, language, layout config, then lazy-l
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Shell, header, breadcrumbs, routing, layout grid, i18n, theme, API client, install, login | done |
-| 1 | Sidebar layout, phone bottom nav, design mode (drag/drop, card operator, new-card dialog), MyselfInfoDialog, overview/status/chart widgets, instance and node lists | next |
-| 2 | Instance console: xterm terminal, controls, file manager, schedules, server config, mods, Docker options in instance settings | |
-| 3 | Admin: settings, users, permissions, images (Docker), audit log, market and quick start | |
+| 1 | Sidebar layout, phone bottom nav, design mode (drag/drop, card operator, new-card dialog), MyselfInfoDialog, overview/status/chart widgets, instance and node lists | done: shell, design mode, profile dialog, Overview, Daemons, Instances, My Application and Open Page |
+| 2 | Next. Instance console: xterm terminal, controls, file manager, schedules, server config, mods, Docker options in instance settings | |
+| 3 | Admin: settings (done early, with the Daemon Passport pane), users, permissions, images (Docker), audit log, market and quick start | |
 | 4 | Decorative cards (image, iframe, text, link, clock, carousel, music, plugin), cutover: replace `frontend/`, update build scripts | |
 
 `PORT_STATUS` in `src/config/widgets.tsx` tracks every widget type.
@@ -73,11 +73,12 @@ Checked with `npm audit` on 2026-10-25: 0 vulnerabilities. All versions pinned e
 | eventemitter3 | 5.0.4 | Request de-duplication (same as upstream) |
 | marked, dompurify | 18.1.1, 3.4.17 | Safe Markdown |
 | dayjs | 1.11.23 | Dates (same as upstream) |
+| pretty-bytes | 7.2.0 | Byte formatting (same as upstream) |
+| echarts | 6.1.0 | Charts (upstream uses 5.x, which has GHSA-fgmj-fm8m-jvvx) |
 | vite, @vitejs/plugin-react, typescript, sass, vitest, jsdom | 8.3.5, 6.1.2, 7.0.2, 1.106.1, 5.0.5, 30.1.3 | Tooling (dev only) |
 
 ## 6. Limitations and known risks
 - Most widgets still show the "not ported" card (see phases).
-- Sidebar navigation (`sidebarPosition: "left"`) is not ported; the top header is always used.
 - jsdom 30 warns that it wants Node >= 22.22.2 (tests still pass on 22.22.0).
 
 ## 7. Troubleshooting

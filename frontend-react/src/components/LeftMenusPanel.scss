@@ -1,0 +1,55 @@
+// Ported from LeftMenusPanel.vue and LeftMenuBtn.vue (scoped).
+.LeftMenusPanel {
+  &.menu-body {
+    height: 100%;
+    // Upstream floats the menu at height 100%; the React card body's height is
+    // not definite for percentages, so a flex row keeps the menu full height.
+    display: flex;
+    .left-menu {
+      // auto (not 100%) so the flex row stretches it to the panel height.
+      flex-shrink: 0;
+      width: 240px;
+      padding: 12px 16px;
+      background-color: var(--color-gray-4);
+      border-top-left-radius: 4px;
+      border-bottom-left-radius: 4px;
+    }
+    .right-content {
+      min-width: 0;
+      padding-right: 1px;
+      overflow: hidden;
+      flex-grow: 1;
+      text-align: left;
+    }
+  }
+
+  .isActive {
+    background-color: rgba(168, 168, 168, 0.143);
+    color: var(--color-blue-5) !important;
+  }
+  .btn {
+    display: flex;
+    text-align: center;
+    align-items: center;
+    height: 40px;
+    padding: 0px 12px;
+    min-width: 40px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.6s;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    width: 100%;
+
+    .text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--color-gray-9);
+    }
+
+    &:hover {
+      background-color: rgba(168, 168, 168, 0.208);
+    }
+  }
+}

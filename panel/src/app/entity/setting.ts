@@ -1,4 +1,33 @@
-import { DEFAULT_UPDATE_SOURCE_URL, LEGACY_DEFAULT_UPDATE_SOURCE_URL } from "mcsmanager-common";
+import { DEFAULT_UPDATE_SOURCE_URL, LEGACY_DEFAULT_UPDATE_SOURCE_URL, PassportMode } from "mcsmanager-common";
+
+/**
+ * Johnnykins security settings for the panel (ported from the
+ * Johnnykins-MCSManager fork's remoteService.* and panelsSha256 options).
+ * Every key is documented in docs/configuration/panel-johnnykins.md.
+ *
+ * SECURITY: holds the panel's secret pairs. They are generated on first
+ * start, stored in data/SystemConfig/config.json, and stripped from every
+ * settings API response (see settings_router).
+ */
+export class JohnnykinsPanelConfig {
+  passport = {
+    // "standard" | "johnnykins-legacy" | "off". Must match each daemon's johnnykins.passport.mode.
+    mode: "standard" as PassportMode,
+    // The panel's standard-mode pair. Empty = generated on first start.
+    panel: { secret: "", salt: "" },
+    // Legacy mode (fork: remoteService.passportType, tokenEntropy, panelsSha256).
+    legacy: {
+      passportType: 4,
+      tokenEntropy: true,
+      maxEntropy: 3,
+      panelsSha256: { password: "", salt: "" },
+      // Seconds a pending passport waits for the daemon's verification call.
+      passportTtlSeconds: 60
+    },
+    // Panel-side wait for a daemon's auth reply (upstream used 5000 ms).
+    authTimeoutMs: 8000
+  };
+}
 
 // Data-plane mode values. String-valued so the persisted JSON and HTTP API
 // payload stay `"direct"` / `"proxy"` (backward compatible with existing
@@ -155,4 +184,7 @@ export default class SystemConfig {
   // primary source cannot be fetched or parsed. Feature disabled only when
   // BOTH source fields are empty.
   updateSourceUrlFallback = LEGACY_DEFAULT_UPDATE_SOURCE_URL;
+
+  // Johnnykins security settings (daemon passport).
+  johnnykins = new JohnnykinsPanelConfig();
 }

@@ -9,6 +9,7 @@ import {
 import * as protocol from "../service/protocol";
 import { routerApp } from "../service/router_app";
 import InstanceSubsystem from "../service/system_instance";
+import { assertCommandsAllowed, guardCommand } from "../service/johnnykins/command_guard";
 
 function checkStreamLogin(ctx: RouterContext) {
   return (
@@ -83,7 +84,7 @@ routerApp.on("stream/input", async (ctx, data) => {
     const command = data.command;
     const instanceUuid = ctx.session?.stream?.instanceUuid;
     const instance = InstanceSubsystem.getInstance(instanceUuid);
-    await instance?.execPreset("command", command);
+    if (instance) await instance.execPreset("command", guardCommand(instance, command));
   } catch (error: any) {
     // Ignore potential high frequency exceptions here
   }
@@ -95,6 +96,8 @@ routerApp.on("stream/write", async (ctx, data) => {
     const buf = data.input;
     const instanceUuid = ctx.session?.stream?.instanceUuid;
     const instance = InstanceSubsystem.getInstance(instanceUuid);
+    // Raw terminal keystrokes (arrows, Ctrl+C) are not sanitized, only gated.
+    assertCommandsAllowed();
     // run without command execution
     if (instance?.process) instance.process.write(buf);
   } catch (error: any) {

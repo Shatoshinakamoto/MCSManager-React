@@ -14,6 +14,7 @@ import { FLAT_ROUTES } from "@/config/routes";
 import { t } from "@/lang/i18n";
 import { logoutUser } from "@/services/apis";
 import { useAppConfig } from "@/stores/appConfig";
+import { useAppTools } from "@/stores/appTools";
 import { isAdminUser, isLoggedIn, useAppState } from "@/stores/appState";
 import { useLayoutConfig } from "@/stores/layoutConfig";
 import { useLayoutContainer } from "@/stores/layoutContainer";
@@ -27,6 +28,8 @@ export interface MenuRoute {
 
 export interface AppMenu {
   title: string;
+  /** Longer label used in the sidebar. */
+  leftSideTitle?: string;
   icon: ReactNode;
   click: (key?: string) => void;
   conditions: boolean;
@@ -36,12 +39,18 @@ export interface AppMenu {
   menus?: { value: string | number; title: string }[];
 }
 
+export type SidebarEntry =
+  | { type: "divider" }
+  | ({ type: "route" } & MenuRoute)
+  | ({ type: "app" } & AppMenu);
+
 export function useHeaderMenus() {
   const navigate = useNavigate();
   const { modal, notification, message } = App.useApp();
   const user = useAppState((s) => s.userInfo);
   const { isDesignMode, setDesignMode, setShowPhoneMenu, setShowNewCardDialog } = useLayoutContainer();
   const setTheme = useAppConfig((s) => s.setTheme);
+  const setShowUserInfoDialog = useAppTools((s) => s.setShowUserInfoDialog);
   const { save, reset } = useLayoutConfig();
   const isAdmin = isAdminUser(user);
   const isLogged = isLoggedIn(user);
@@ -98,7 +107,7 @@ export function useHeaderMenus() {
         })
     },
     {
-      title: t("TXT_CODE_5d88a9b"), icon: <BgColorsOutlined />, conditions: !isDesignMode,
+      title: t("TXT_CODE_5d88a9b"), leftSideTitle: t("TXT_CODE_ee01c10c"), icon: <BgColorsOutlined />, conditions: !isDesignMode,
       click: (key) => setTheme(Number(key) as AppTheme),
       menus: [
         { value: AppTheme.AUTO, title: t("TXT_CODE_dc8de4ff") },
@@ -107,7 +116,7 @@ export function useHeaderMenus() {
       ]
     },
     {
-      title: t("TXT_CODE_ebd2a6a1"), icon: <BuildOutlined />, conditions: !isDesignMode && isAdmin, onlyPC: true,
+      title: t("TXT_CODE_ebd2a6a1"), leftSideTitle: t("TXT_CODE_4eb158da"), icon: <BuildOutlined />, conditions: !isDesignMode && isAdmin, onlyPC: true,
       click: () =>
         modal.confirm({
           title: t("TXT_CODE_29e85f34"), content: t("TXT_CODE_f18f65db"),
@@ -118,9 +127,8 @@ export function useHeaderMenus() {
         })
     },
     {
-      // TODO(port): MyselfInfoDialog (profile, password, 2FA, API key) is phase 2.
       title: t("TXT_CODE_8c3164c9"), icon: <UserOutlined />, conditions: !isDesignMode && isLogged,
-      click: () => message.info(t("TXT_CODE_8c3164c9"))
+      click: () => setShowUserInfoDialog(true)
     },
     {
       title: t("TXT_CODE_2c69ab15"), icon: <LogoutOutlined />, conditions: !isDesignMode && isLogged, customClass: ["nav-button-danger"],
@@ -136,5 +144,12 @@ export function useHeaderMenus() {
     }
   ];
 
-  return { menus, appMenus, handleToPage };
+  /** Sidebar: route links, a divider, then app actions (header-only items excluded). */
+  const sidebarItems: SidebarEntry[] = [
+    ...menus.map((r) => ({ type: "route" as const, ...r })),
+    { type: "divider" as const },
+    ...appMenus.filter((m) => m.conditions && !m.onlyHeader).map((m) => ({ type: "app" as const, ...m, title: m.leftSideTitle || m.title }))
+  ];
+
+  return { menus, appMenus, sidebarItems, handleToPage };
 }

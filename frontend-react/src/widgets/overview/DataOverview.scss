@@ -1,0 +1,74 @@
+// Ported from widgets/PanelOverview.vue styles (:deep() flattened).
+// Scoped under .panel-overview to match Vue's scoped styles.
+.panel-overview {
+  height: 100%;
+
+
+.overview-item {
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-gary-4);
+    font-size: var(--font-body);
+    margin-bottom: 8px;
+
+    .overview-item__icon {
+      font-size: 16px;
+      color: var(--color-primary);
+    }
+  }
+
+  &__value {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 8px;
+    color: var(--color-gary-6);
+    font-size: var(--font-h5);
+
+    .overview-item__percent {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .overview-item__unit {
+      opacity: 0.9;
+    }
+  }
+
+  &--progress {
+    .ant-progress {
+      margin-bottom: 0;
+    }
+
+    .ant-progress-outer,
+    .ant-progress-inner {
+      border-radius: 8px;
+    }
+  }
+
+  &--loadavg {
+    .loadavg-tags {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+
+      .loadavg-tag {
+        margin: 0;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .loadavg-sep {
+        color: var(--color-gary-4);
+        font-size: 12px;
+        margin: 0 2px;
+      }
+    }
+  }
+}
+
+}

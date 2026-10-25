@@ -1,0 +1,21 @@
+// Ported from components/DataStatistic.vue (root class renamed from the generic
+// ".container" to ".data-statistic" so it can't clash with other styles).
+.data-statistic {
+  .title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-gary-4);
+    font-size: var(--font-body);
+    margin-bottom: 8px;
+
+    .title-icon {
+      font-size: 16px;
+      color: var(--color-primary);
+    }
+  }
+  .content {
+    color: var(--color-gary-6);
+    font-size: var(--font-h5);
+  }
+}

@@ -19,13 +19,15 @@ interface Props {
   padding?: boolean;
   className?: string;
   style?: CSSProperties;
+  /** Vue passed @click through to the root element; React needs it explicitly. */
+  onClick?: () => void;
 }
 
-export default function CardPanel({ title, operator, operatorDesign, children, bodyDesign, fullHeight = true, padding = true, className, style }: Props) {
+export default function CardPanel({ title, operator, operatorDesign, children, bodyDesign, fullHeight = true, padding = true, className, style, onClick }: Props) {
   const isDesignMode = useLayoutContainer((s) => s.isDesignMode);
   const classes = ["card-panel", "global-card-container-shadow", fullHeight ? "h-100" : "", padding ? "card-panel-padding" : "", className ?? ""];
   return (
-    <div className={classes.filter(Boolean).join(" ")} style={style}>
+    <div className={classes.filter(Boolean).join(" ")} style={style} onClick={onClick}>
       {title !== undefined && (
         <div className="card-panel-title">
           <div>

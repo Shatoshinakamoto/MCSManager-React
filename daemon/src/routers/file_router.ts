@@ -17,6 +17,13 @@ import { checkSafeUrl } from "../utils/url";
 // Some routers operate router authentication middleware
 routerApp.use((event, ctx, data, next) => {
   if (event.startsWith("file/")) {
+    // Johnnykins daemon-side gate (instanceMasterConfig.canFileManager); the panel cannot override it.
+    if (globalConfiguration.config.johnnykins.instanceMasterConfig.canFileManager === false) {
+      return protocol.error(ctx, event, {
+        instanceUuid: data?.instanceUuid,
+        err: "This daemon has disabled the file manager (instanceMasterConfig.canFileManager)."
+      });
+    }
     const instanceUuid = data.instanceUuid;
     const instance = InstanceSubsystem.getInstance(instanceUuid);
     if (!instance) {

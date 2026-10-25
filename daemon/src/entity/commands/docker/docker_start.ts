@@ -7,10 +7,15 @@ import {
 } from "../../../service/docker_process_service";
 import logger from "../../../service/log";
 import Instance from "../../instance/instance";
+import { globalConfiguration } from "../../config";
 import AbsStartCommand from "../start";
 
 export default class DockerStartCommand extends AbsStartCommand {
   protected async createProcess(instance: Instance) {
+    // Johnnykins daemon-side gate (instanceMasterConfig.docker).
+    if (globalConfiguration.config.johnnykins.instanceMasterConfig.docker === false) {
+      throw new StartupDockerProcessError("This daemon has disabled Docker instances (instanceMasterConfig.docker).");
+    }
     if (!instance.config.ie || !instance.config.oe) {
       instance.config.ie = "utf-8";
       instance.config.oe = "utf-8";

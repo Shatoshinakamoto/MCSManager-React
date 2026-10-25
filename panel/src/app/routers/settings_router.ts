@@ -20,6 +20,7 @@ import { getOperationLoggerOperator, operationLogger } from "../service/operatio
 import remoteService from "../service/remote_service";
 import userSystem from "../service/user_service";
 import { saveSystemConfig, systemConfig } from "../setting";
+import { legacyPassport, parsePassportMode } from "mcsmanager-common";
 import { checkFileName } from "../utils/safe";
 import { checkBusinessMode } from "../version";
 
@@ -32,7 +33,26 @@ router.get("/setting", permission({ level: ROLE.ADMIN }), async (ctx) => {
     ctx.body = systemConfig;
     return;
   }
-  ctx.body = { ...systemConfig, ssoClientSecret: "" };
+  // SECURITY: never send secrets to the browser (CWE-200). The Johnnykins
+  // section is reduced to its non-secret switches.
+  const jp = systemConfig.johnnykins.passport;
+  ctx.body = {
+    ...systemConfig,
+    ssoClientSecret: "",
+    gatewaySecret: "",
+    johnnykins: {
+      passport: {
+        mode: jp.mode,
+        authTimeoutMs: jp.authTimeoutMs,
+        legacy: {
+          passportType: jp.legacy.passportType,
+          tokenEntropy: jp.legacy.tokenEntropy,
+          maxEntropy: jp.legacy.maxEntropy,
+          passportTtlSeconds: jp.legacy.passportTtlSeconds
+        }
+      }
+    }
+  };
 });
 
 // [Top-level Permission]
@@ -301,6 +321,21 @@ router.put("/setting", permission({ level: ROLE.ADMIN }), async (ctx) => {
       systemConfig.ssoAllowedRedirectHosts = hosts.join(",");
     }
 
+    // Johnnykins passport switches (secrets are not editable over the API).
+    const jIn = config.johnnykins?.passport;
+    if (jIn && typeof jIn === "object") {
+      const jp = systemConfig.johnnykins.passport;
+      if (jIn.mode != null) jp.mode = parsePassportMode(jIn.mode);
+      if (jIn.authTimeoutMs != null) jp.authTimeoutMs = Math.min(Math.max(Number(jIn.authTimeoutMs) || 8000, 2000), 60000);
+      const l = jIn.legacy;
+      if (l && typeof l === "object") {
+        if (l.passportType != null) jp.legacy.passportType = legacyPassport.parseLegacyPassportType(Number(l.passportType));
+        if (l.tokenEntropy != null) jp.legacy.tokenEntropy = Boolean(l.tokenEntropy);
+        if (l.maxEntropy != null) jp.legacy.maxEntropy = Math.min(Math.max(Math.floor(Number(l.maxEntropy) || 3), 1), 10);
+        if (l.passportTtlSeconds != null) jp.legacy.passportTtlSeconds = Math.min(Math.max(Math.floor(Number(l.passportTtlSeconds) || 60), 5), 600);
+      }
+    }
+
     const diff = diffConfig(systemConfigBefore, JSON.parse(JSON.stringify(systemConfig)));
     if (diff) {
       operationLogger.log(
@@ -362,6 +397,8 @@ router.delete("/layout", permission({ level: ROLE.ADMIN }), async (ctx) => {
   ctx.body = true;
 });
 
+const ALLOWED_ASSET_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"]);
+
 // [Top-level Permission]
 // Upload file to asserts directory, only administrator can upload
 router.post("/upload_assets", permission({ level: ROLE.ADMIN }), async (ctx) => {
@@ -376,7 +413,13 @@ router.post("/upload_assets", permission({ level: ROLE.ADMIN }), async (ctx) => 
     if (!tmpFile) throw new Error($t("TXT_CODE_e4d6cc20"));
     if (!tmpFile.filepath || !fs.existsSync(tmpFile.filepath))
       throw new Error($t("TXT_CODE_1a499109"));
-    const newFileName = v4() + path.extname(tmpFile.originalFilename || "");
+    // SECURITY: these files are served from the panel's own origin, so only
+    // raster images are accepted (upstream took any extension; an .html or
+    // .svg upload would run script as the panel, CWE-434/CWE-79). The UI only
+    // uses this for the logo and background image.
+    const ext = path.extname(tmpFile.originalFilename || "").toLowerCase();
+    if (!ALLOWED_ASSET_EXTENSIONS.has(ext)) throw new Error("Only image files can be uploaded (png, jpg, jpeg, gif, webp, ico)");
+    const newFileName = v4() + ext;
     if (!checkFileName(newFileName)) throw new Error("Access denied: Malformed file name");
     const saveDirPath = path.join(process.cwd(), SAVE_DIR_PATH);
     if (!fs.existsSync(saveDirPath)) fs.mkdirsSync(saveDirPath);

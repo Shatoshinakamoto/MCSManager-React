@@ -188,3 +188,116 @@ export function matchLegacyPassport(stored: LegacyPassport, presented: Record<st
   for (const f of FIELDS[type]) ok = safeEqual((stored as unknown as Record<string, string>)[f], presented[f]) && ok;
   return ok;
 }
+
+/** The two password/salt pairs of the original design ("panelsSha256" and the daemon's "sha256"). */
+export interface LegacyKeyPairs {
+  panel: { password: string; salt: string };
+  daemon: { password: string; salt: string };
+}
+
+/**
+ * HTTP header used for each passport field on the daemon -> panel
+ * verification call (/api/auth/daemon-verifications).
+ */
+export const LEGACY_HEADERS: Record<keyof PassportV4, string> = {
+  key: "authorization-key",
+  uuid: "daemon-uuid-on-panel",
+  token: "johnnybrowniekins-tokenv4",
+  tokenv2: "johnnykins-tokenv2",
+  tokenv3: "browniekins-tokenv3",
+  entropy: "johnnykins-entropy"
+};
+
+/** The fields each passport type carries (exported for the panel and daemon). */
+export function legacyFields(type: LegacyPassportType): string[] {
+  return [...FIELDS[type]];
+}
+
+/**
+ * Fingerprint of one passport field, computed identically by the panel (to
+ * store) and the daemon (to present).
+ *
+ * Fixed: in the 10.2.x fork the panel always used the wrapper while the daemon
+ * used plain generateToken() for passport types 1-3, so those types could
+ * never verify. Both sides now call this one function.
+ */
+export function legacyFingerprint(value: string, keys: LegacyKeyPairs): string {
+  return new JohnsNonAsymmSha256Wrapper(value, keys.panel.password, keys.panel.salt, keys.daemon.password, keys.daemon.salt).toString();
+}
+
+/** Fingerprint every field of a passport for the given type. */
+export function fingerprintPassport(p: LegacyPassport, type: LegacyPassportType, keys: LegacyKeyPairs): LegacyPassport {
+  const out: Record<string, string> = {};
+  for (const f of FIELDS[type]) out[f] = legacyFingerprint((p as unknown as Record<string, string>)[f], keys);
+  return out as unknown as LegacyPassport;
+}
+
+/** Build a fresh raw passport of the given type (CSPRNG tokens). */
+export function createLegacyPassport(type: LegacyPassportType, key: string, uuid: string, entropy = 1): LegacyPassport {
+  const token = createTokenV3(entropy);
+  switch (type) {
+    case 1: return { key, token, uuid };
+    case 2: return { key, tokenv2: createTokenV2(entropy), uuid };
+    case 3: return { key, tokenv2: createTokenV2(entropy), tokenv3: createTokenV3(entropy), uuid };
+    default: return { key, token, tokenv2: createTokenV2(entropy), tokenv3: createTokenV3(entropy), uuid };
+  }
+}
+
+/** Parse a configured passport type, failing closed to 4 (the fork's default). */
+export function parseLegacyPassportType(value: unknown): LegacyPassportType {
+  return value === 1 || value === 2 || value === 3 || value === 4 ? value : 4;
+}
+
+/**
+ * Pending passports the panel has issued and is waiting for a daemon to
+ * present. Replaces the fork's LimitedLRUArray.
+ *
+ * Fixed (the intermittent "daemon won't connect" bug):
+ * - LimitedLRUArray keyed entries by `this.data.size`. After any entry expired
+ *   or was evicted, the next add() reused a live key and silently overwrote
+ *   another daemon's pending passport, so that daemon's verification failed.
+ * - It held only 5 passports, so a reconnect burst (panel restart with 5+
+ *   nodes) evicted passports that were still in flight.
+ * - Passports were never removed after use, so one could be replayed for 5
+ *   minutes (CWE-294).
+ * Now: unique ids, a larger bound, a short TTL, and single-use take().
+ */
+export class LegacyPassportStore {
+  private seq = 0;
+  private readonly entries = new Map<number, { type: LegacyPassportType; passport: LegacyPassport; expires: number }>();
+  constructor(private readonly ttlMs = 60_000, private readonly maxEntries = 256) {}
+
+  private prune(now: number) {
+    for (const [id, e] of this.entries) if (e.expires <= now) this.entries.delete(id);
+    // SECURITY: bounded memory (CWE-400). Map iteration order is insertion order, so this drops the oldest.
+    while (this.entries.size >= this.maxEntries) this.entries.delete(this.entries.keys().next().value as number);
+  }
+
+  add(type: LegacyPassportType, fingerprinted: LegacyPassport, now = Date.now()): number {
+    this.prune(now);
+    const id = ++this.seq;
+    this.entries.set(id, { type, passport: fingerprinted, expires: now + this.ttlMs });
+    return id;
+  }
+
+  /** Find, remove and return true for a matching passport (single use). */
+  take(type: LegacyPassportType, presented: Record<string, unknown>, now = Date.now()): boolean {
+    for (const [id, e] of this.entries) if (e.expires <= now) this.entries.delete(id);
+    let found: number | undefined;
+    for (const [id, e] of this.entries) {
+      // Check every entry so the time taken does not depend on which one matched (CWE-208).
+      if (e.type === type && matchLegacyPassport(e.passport, presented, type) && found === undefined) found = id;
+    }
+    if (found === undefined) return false;
+    this.entries.delete(found);
+    return true;
+  }
+
+  remove(id: number) {
+    this.entries.delete(id);
+  }
+
+  get size(): number {
+    return this.entries.size;
+  }
+}

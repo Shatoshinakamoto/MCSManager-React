@@ -1,0 +1,38 @@
+// Ported from widgets/NodeList.vue styles (:deep() flattened).
+// Scoped under .NodeList to match Vue's scoped styles.
+.NodeList {
+
+.search-input {
+  transition: all 0.4s;
+  text-align: center;
+  width: 80%;
+
+  &:hover {
+    width: 100%;
+  }
+
+  // ant-design-vue inputs inherit text-align; antd 6 resets it.
+  input {
+    text-align: center;
+  }
+}
+
+.desc {
+  display: flex;
+  justify-content: space-between;
+}
+
+@media (max-width: 992px) {
+  .search-input {
+    width: 100% !important;
+  }
+
+  .desc {
+    flex-direction: column;
+    .pagination {
+      margin-top: 10px;
+    }
+  }
+}
+
+}

@@ -1,0 +1,26 @@
+// Ported from widgets/NodeOverview.vue styles (:deep() flattened).
+// Scoped under .NodeOverview to match Vue's scoped styles.
+.NodeOverview {
+
+.NodeOverview__wrap {
+  overflow: auto;
+  padding: 0 1px;
+}
+
+.text-monospace {
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+}
+
+.NodeOverview__wrap .ant-table-pagination {
+  margin: 8px 0 0;
+}
+
+.NodeOverview__wrap .ant-table {
+  font-size: 12px;
+}
+
+.NodeOverview__wrap .ant-table-thead > tr > th {
+  font-weight: 600;
+}
+
+}

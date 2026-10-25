@@ -1,0 +1,67 @@
+# Daemon `johnnykins` settings
+
+File: `daemon/data/Config/global.json`, key `johnnykins`. Ported from the Johnnykins-MCSManager fork's
+`johnnykins`, `instanceMasterConfig`, ban and passport options. Restart the daemon after editing.
+
+> SECURITY: this section holds secret pairs. The daemon keeps the file at mode 0700. Never paste it into
+> issues or chat, and never commit it.
+
+## `johnnykins.passport`
+
+| Key | Default | Fork name | Meaning |
+|---|---|---|---|
+| `mode` | `"standard"` | `panelPassportType` (partly) | `standard` (HMAC-SHA256 challenge-response), `johnnykins-legacy` (original wrapper plus verification call to the panel), or `off` (upstream: daemon key only). Must match the panel's mode. Unknown values fall back to `standard`. |
+| `daemonId` | random UUID | – | This daemon's id in the passport. |
+| `daemon.secret` / `daemon.salt` | random (32 / 16 bytes) | `johnnykins.sha256` | This daemon's secret pair. |
+| `panelId` | `""` | `panelServerIDs` | The paired panel. Filled in by pairing. |
+| `panel.secret` / `panel.salt` | `""` | `johnnykins.panelsSha256` | The paired panel's pair. Filled in by pairing. |
+| `lock` | `false` | `johnnykins.lock` | Set to `true` by the first pairing. While `true` only `panelId` can connect and the daemon never hands out its pair again. Set to `false` and restart to pair a new panel. |
+| `maxAgeMs` | `300000` | – | Accepted proof age. The single-use nonce gives freshness; this mostly absorbs clock skew between hosts. |
+| `challengeTtlMs` | `30000` | – | How long a challenge nonce stays valid. |
+| `legacy.passportType` | `4` | `panelPassportType` | Passport type 1-4 for `johnnykins-legacy`. Must match the panel. |
+| `legacy.panelServerAddress` | `"http://localhost:23333"` | `panelServerAddress` | Where the daemon calls `/api/auth/daemon-verifications`. Use `https://` for a remote panel. |
+| `legacy.verifyTimeoutMs` | `4000` | – | Timeout for that call. Keep it below the panel's `authTimeoutMs`. |
+| `legacy.sha256` | random | `johnnykins.sha256` | This daemon's legacy pair. |
+| `legacy.panelsSha256` | `""` | `johnnykins.panelsSha256` | The panel's legacy pair, filled in by pairing. |
+
+## `johnnykins.ban`
+
+| Key | Default | Fork name | Meaning |
+|---|---|---|---|
+| `enabled` | `true` | – | Ban addresses after repeated failed daemon logins. |
+| `maxFailedLoginsToBan` | `5` | `maxFailedLoginsToBan` (3) | Failed logins (wrong key or bad proof) before a ban. Mode or pairing mismatches don't count. |
+| `banTime` | `60` | `banTime` | Minutes. `0` means permanent. Bans always expire otherwise (fork: `forgiveBans`). |
+| `whitelisted` | `["127.0.0.1", "::1"]` | `whitelisted` | Never banned. |
+| `trustedProxies` | `[]` | – | Only if the daemon is behind your own reverse proxy: list its addresses so `X-Forwarded-For` is used. Empty means forwarding headers are ignored (they are client-controlled). |
+
+Bans are saved to `daemon/data/Security/bans.json` (mode 0600).
+
+## `johnnykins.sanitizer`
+
+Applied to console commands from the panel (`instance/command`, `stream/input`). Raw terminal keystrokes
+(`stream/write`) are only gated, not sanitized.
+
+| Key | Default | Fork name | Meaning |
+|---|---|---|---|
+| `sanitizer` | `true` | `sanitizer` | Sanitize non-Minecraft instances. |
+| `mcSanitizer` | `true` | `mcSanitizer` | Sanitize `minecraft/*` instances with the Minecraft profile. |
+| `stripControlChars` | `true` | (part of `sanitizer`) | Remove control characters and ANSI escape sequences. |
+| `stripEmoji` | `true` | (part of `sanitizer`) | Remove emoji. |
+| `stripEscapes` | `false` | (part of `sanitizer`) | Fork behaviour: remove backslash escapes and quoted text. Breaks `/tellraw` and other JSON commands. |
+| `sanitizerBuiltInBlacklist` | `true` | `sanitizerBuiltInBlacklist` | Reject shell commands such as `rm`, `sudo`, `bash`, `curl` and paths with `../`. Applies only to instances whose start command is a shell (bash, sh, cmd, PowerShell...). |
+| `sanitizerConfigurableBlacklist` | `false` | `sanitizerConfigurableBlacklist` | Turn on `sanitizerBlacklist`. |
+| `sanitizerBlacklist` | `[]` | `sanitizerBlacklist` | Your own entries, both profiles. A single word matches the command word (`op` blocks `op Steve`, not `deop`). An entry with a space or `/` matches as literal text. Entries are never treated as regular expressions. |
+| `maxLength` | `32767` | – | Longer commands are rejected. |
+
+Blocked commands are refused with an error, not silently changed. A blacklist is defence in depth: run
+instances as an unprivileged user or in Docker, with SELinux enforcing.
+
+## `johnnykins.instanceMasterConfig`
+
+Daemon-side switches the panel cannot override.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `canSendCommands` | `true` | Allow console input from the panel. |
+| `canFileManager` | `true` | Allow the file manager (`file/*` events). |
+| `docker` | `true` | Allow Docker instances to start. (The fork defaulted this to `false`; it is `true` here to keep upstream Docker support working.) |

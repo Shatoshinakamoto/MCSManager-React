@@ -2,15 +2,22 @@
  * App shell (port of App.vue): theme provider, header, breadcrumbs and the
  * routed page, plus the navigation guard from config/routes.
  *
- * TODO(port, phase 1): AppSidebarMenu (sidebarPosition "left"),
- * AppBottomNav for phones, MyselfInfoDialog, UploadBubble.
+ * Sidebar layout is used when the layout sets sidebarPosition "left" and the
+ * window is at least 1400px wide, exactly like upstream useSidebarLayout.
+ * TODO(port, phase 2): UploadBubble.
  */
 import { App as AntApp, ConfigProvider } from "antd";
 import enUS from "antd/locale/en_US";
 import zhCN from "antd/locale/zh_CN";
 import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
+import AppBottomNav from "@/components/AppBottomNav";
 import AppHeader from "@/components/AppHeader";
+import AppSidebarMenu from "@/components/AppSidebarMenu";
+import DialogHost from "@/components/DialogHost";
+import InputDialogProvider from "@/components/InputDialogProvider";
+import MyselfInfoDialog from "@/components/MyselfInfoDialog";
+import { useMinWidth, useScreen } from "@/hooks/useScreen";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { FLAT_ROUTES, resolveNavigation } from "@/config/routes";
 import { getCurrentLang } from "@/lang/i18n";
@@ -41,6 +48,10 @@ export default function App() {
   const isDesignMode = useLayoutContainer((s) => s.isDesignMode);
   const hasUser = useAppState((s) => Boolean(s.userInfo));
   const location = useLocation();
+  const sidebarPosition = useAppConfig((s) => s.sidebarPosition);
+  const wideEnough = useMinWidth(1400);
+  const { isPhone } = useScreen();
+  const useSidebarLayout = sidebarPosition === "left" && wideEnough;
 
   useEffect(() => {
     initAppTheme();
@@ -51,12 +62,14 @@ export default function App() {
   const locale = getCurrentLang() === "zh_cn" ? zhCN : enUS;
 
   return (
-    <ConfigProvider theme={themeConfig} locale={locale} componentSize="large">
+    <ConfigProvider theme={themeConfig} locale={locale} componentSize="large" tag={{ variant: "outlined" }}>
+      {/* tag variant "outlined": ant-design-vue 4 tags have a coloured border. */}
       {/* component={false}: no wrapper div, so antd does not override the copied SCSS line-heights. */}
       <AntApp component={false}>
         <div className="global-app-container">
-          <main className="main-content">
-            <AppHeader style={navStyle} />
+          {useSidebarLayout && <AppSidebarMenu style={navStyle} />}
+          <main className={["main-content", useSidebarLayout && "app-layout-sidebar-only"].filter(Boolean).join(" ")}>
+            {!useSidebarLayout && <AppHeader style={navStyle} />}
             <Breadcrumbs />
             <Routes>
               {FLAT_ROUTES.map((r) => {
@@ -68,6 +81,10 @@ export default function App() {
             </Routes>
           </main>
         </div>
+        {isPhone && !useSidebarLayout && <AppBottomNav />}
+        <MyselfInfoDialog />
+        <InputDialogProvider />
+        <DialogHost />
       </AntApp>
     </ConfigProvider>
   );

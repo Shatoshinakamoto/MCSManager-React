@@ -2,6 +2,7 @@ import { io, Socket, SocketOptions, ManagerOptions } from "socket.io-client";
 import { RemoteServiceConfig } from "./entity_interface";
 import { logger } from "../service/log";
 import RemoteRequest from "../service/remote_command";
+import { passportAuth } from "../service/johnnykins/passport_client";
 import { InstanceStreamListener, removeTrail } from "mcsmanager-common";
 import { systemConfig } from "../setting";
 import { $t, i18next } from "../i18n";
@@ -90,8 +91,10 @@ export default class RemoteService {
     if (key) this.config.apiKey = key;
     const daemonInfo = this.getDaemonInfo();
     try {
-      const res = await new RemoteRequest(this).request("auth", this.config.apiKey, 5000, true);
-      if (res === true) {
+      // Johnnykins passport handshake (standard / johnnykins-legacy / off).
+      const outcome = await passportAuth(this);
+      if (!outcome.ok) logger.warn(`[Johnnykins] ${daemonInfo} passport: ${outcome.reason}`);
+      if (outcome.ok) {
         this.available = true;
         await this.setLanguage();
         logger.info($t("TXT_CODE_daemonInfo.authSuccess", { v: daemonInfo }));

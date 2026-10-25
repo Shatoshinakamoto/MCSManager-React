@@ -8,6 +8,7 @@
  */
 export * as standardPassport from "./standard";
 export * as legacyPassport from "./legacy";
+export * as passportHandshake from "./handshake";
 
 export type PassportMode = "standard" | "johnnykins-legacy" | "off";
 export const DEFAULT_PASSPORT_MODE: PassportMode = "standard";

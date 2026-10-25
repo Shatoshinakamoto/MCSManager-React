@@ -20,6 +20,7 @@ import logger from "../service/log";
 import * as protocol from "../service/protocol";
 import { routerApp } from "../service/router_app";
 import InstanceSubsystem from "../service/system_instance";
+import { guardCommand } from "../service/johnnykins/command_guard";
 
 import { arrayUnique, toNumber } from "mcsmanager-common";
 import ProcessInfoCommand from "../entity/commands/process_info";
@@ -356,7 +357,7 @@ routerApp.on("instance/command", async (ctx, data) => {
   const instance = InstanceSubsystem.getInstance(instanceUuid);
   try {
     if (!instance) throw new Error($t("TXT_CODE_3bfb9e04"));
-    await instance.execPreset("command", command);
+    await instance.execPreset("command", guardCommand(instance, command));
     if (!disableResponse) protocol.msg(ctx, "instance/command", { instanceUuid });
   } catch (err: any) {
     if (!disableResponse)

@@ -1,7 +1,15 @@
 import fs from "fs-extra";
 import path from "path";
 import { v4 } from "uuid";
-import { DEFAULT_UPDATE_SOURCE_URL, LEGACY_DEFAULT_UPDATE_SOURCE_URL } from "mcsmanager-common";
+import {
+  DEFAULT_SANITIZER_OPTIONS,
+  DEFAULT_UPDATE_SOURCE_URL,
+  LEGACY_DEFAULT_UPDATE_SOURCE_URL,
+  PassportMode,
+  SanitizerOptions,
+  standardPassport
+} from "mcsmanager-common";
+import { randomBytes } from "crypto";
 import StorageSubsystem from "../common/system_storage";
 import logger from "../service/log";
 
@@ -62,6 +70,75 @@ class Config {
   // primary source cannot be fetched or parsed. Feature disabled only when
   // BOTH source fields are empty.
   public updateSourceUrlFallback = LEGACY_DEFAULT_UPDATE_SOURCE_URL;
+
+  // Johnnykins security settings (passport, bans, sanitizer, feature gates).
+  public johnnykins = new JohnnykinsDaemonConfig();
+}
+
+/**
+ * Johnnykins security settings (ported from the Johnnykins-MCSManager fork's
+ * `johnnykins`, `instanceMasterConfig`, ban and passport options).
+ * Every key is documented in docs/configuration/daemon-johnnykins.md.
+ *
+ * SECURITY: this object holds secret pairs. It lives in
+ * data/Config/global.json, which store()/load() keep at 0700, and it is
+ * never sent to the panel or browser except the one-time pairing reply.
+ */
+export class JohnnykinsDaemonConfig {
+  passport = {
+    // "standard" (HMAC challenge-response), "johnnykins-legacy" (original
+    // wrapper + HTTP verification call) or "off" (upstream key only).
+    mode: "standard" as PassportMode,
+    // This daemon's id in the passport transcript.
+    daemonId: v4(),
+    // This daemon's secret pair (fork: johnnykins.sha256 / standard: daemon pair).
+    daemon: standardPassport.generateSecretPair(),
+    // The paired panel. Empty until the first successful connection.
+    panelId: "",
+    panel: { secret: "", salt: "" },
+    // Fork: johnnykins.lock. Set by the first pairing; while true only the
+    // paired panel can connect. Set to false (and restart) to re-pair.
+    lock: false,
+    // Accepted proof age. The single-use challenge nonce already guarantees
+    // freshness, so this mainly absorbs clock skew between hosts.
+    maxAgeMs: 300000,
+    // How long a challenge nonce stays valid.
+    challengeTtlMs: 30000,
+    legacy: {
+      // Fork: panelPassportType (1-4) and panelServerAddress.
+      passportType: 4,
+      panelServerAddress: "http://localhost:23333",
+      // Must be shorter than the panel's auth timeout (fork had none).
+      verifyTimeoutMs: 4000,
+      // Fork: johnnykins.sha256 (this daemon) and johnnykins.panelsSha256 (synced from the panel).
+      sha256: { password: randomBytes(32).toString("base64url"), salt: randomBytes(16).toString("base64url") },
+      panelsSha256: { password: "", salt: "" }
+    }
+  };
+
+  // Fork: maxFailedLoginsToBan, banTime, forgiveBans, whitelisted.
+  ban = {
+    enabled: true,
+    maxFailedLoginsToBan: 5,
+    // Minutes. Bans always expire (fork: forgiveBans); 0 = never expire.
+    banTime: 60,
+    // Addresses that are never banned.
+    whitelisted: ["127.0.0.1", "::1"],
+    // Only when the daemon sits behind a reverse proxy you control: name the
+    // proxy addresses here and the X-Forwarded-For client is used instead of
+    // the socket address. Empty = never trust forwarding headers.
+    trustedProxies: [] as string[]
+  };
+
+  // Fork: johnnykins.sanitizer* and mcSanitizer.
+  sanitizer: SanitizerOptions = { ...DEFAULT_SANITIZER_OPTIONS };
+
+  // Fork: instanceMasterConfig. Daemon-side switches the panel cannot override.
+  instanceMasterConfig = {
+    canSendCommands: true,
+    canFileManager: true,
+    docker: true
+  };
 }
 
 // daemon configuration class
@@ -93,7 +170,9 @@ class GlobalConfiguration {
       StorageSubsystem.store("Config", GlobalConfiguration.ID, config);
     }
     this.config = config;
-    this.restrictConfigFilePermission();
+    // Persist settings added by newer versions (e.g. freshly generated
+    // johnnykins secrets) so they stay stable across restarts.
+    this.store();
   }
 
   store() {

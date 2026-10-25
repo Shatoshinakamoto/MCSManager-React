@@ -1,0 +1,17 @@
+// antd 6 vs ant-design-vue 4 box-model differences, so React widgets render at
+// the same size as the Vue UI. Each rule names the upstream measurement.
+
+// ant-design-vue 4 line Progress: 22px tall row (line-height) with an 8px bottom margin.
+.ant-progress.ant-progress-line {
+  margin-bottom: 8px;
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+}
+
+// From NodeRemoteMappingEdit.vue (scoped there; harmless as a utility class).
+.center-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

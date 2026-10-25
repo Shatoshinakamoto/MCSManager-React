@@ -1,0 +1,77 @@
+// Ported from widgets/StatusBlock.vue styles (:deep() flattened).
+// Scoped under .StatusBlock to match Vue's scoped styles.
+.StatusBlock {
+
+.status-text {
+  font-size: 2rem;
+  font-weight: 500;
+  letter-spacing: -0.1em;
+  color: #606060;
+  font-family: auto;
+
+  &__highlight {
+    font-size: 3rem;
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+}
+
+.status-card-icon {
+  position: absolute;
+  right: 12px;
+  font-size: 4rem;
+  bottom: 10px;
+  opacity: 0.1;
+  transition: transform 0.25s ease-out;
+  // Upstream's "svg { fill: #fff }" never matched under Vue's scoped CSS, so it is dropped here.
+}
+
+.status-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+
+  &__icon {
+    font-size: 18px;
+    color: var(--color-primary);
+  }
+
+  &__title {
+    font-size: var(--font-body);
+  }
+}
+
+.status-bars {
+  display: flex;
+  gap: 20px;
+  margin-top: 4px;
+  flex-direction: column;
+
+  .status-bar-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .status-bar-value {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    &__percent {
+      font-weight: 500;
+    }
+
+    &__detail {
+      font-size: 12px;
+      color: #909090;
+    }
+  }
+}
+
+& {
+  position: relative;
+}
+
+}

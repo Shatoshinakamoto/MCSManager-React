@@ -1,0 +1,16 @@
+// Ported from components/fc/TagsDialog.vue (scoped).
+.TagsDialog {
+  .tag-container {
+    margin-left: -4px;
+    margin-right: -4px;
+  }
+
+  .group-name-tag {
+    height: 26px;
+    line-height: 24px;
+  }
+
+  .tag-option {
+    cursor: pointer;
+  }
+}

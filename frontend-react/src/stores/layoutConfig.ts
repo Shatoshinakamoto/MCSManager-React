@@ -18,7 +18,8 @@ interface LayoutConfigState {
   getPageItems: (page: string) => LayoutCard[];
   deleteItem: (page: string, id: string) => void;
   insertItem: (page: string, card: LayoutCard, index?: number) => void;
-  moveItem: (page: string, sourceId: string, targetId: string) => void;
+  moveItem: (page: string, sourceId: string, targetId: string, newArea?: boolean) => void;
+  updateItem: (page: string, id: string, patch: Partial<LayoutCard>) => void;
   save: () => Promise<void>;
   reset: () => Promise<void>;
 }
@@ -56,16 +57,22 @@ export const useLayoutConfig = create<LayoutConfigState>((set, get) => ({
         return items;
       })
     })),
-  moveItem: (page, sourceId, targetId) =>
+  // Same index arithmetic as upstream useCardDragMove.moveCardItem.
+  moveItem: (page, sourceId, targetId, newArea = false) =>
     set((s) => ({
       pages: updatePage(s.pages, page, (items) => {
+        if (!sourceId || sourceId === targetId) return items;
         const from = items.findIndex((c) => c.id === sourceId);
-        const to = items.findIndex((c) => c.id === targetId);
-        if (from < 0 || to < 0) return items;
-        items.splice(to, 0, items.splice(from, 1)[0]);
+        let to = items.findIndex((c) => c.id === targetId);
+        if (from < 0) return items;
+        const [card] = items.splice(from, 1);
+        if (newArea && from > to) to += 1;
+        items.splice(to < 0 ? items.length : to, 0, card);
         return items;
       })
     })),
+  updateItem: (page, id, patch) =>
+    set((s) => ({ pages: updatePage(s.pages, page, (items) => items.map((c) => (c.id === id ? { ...c, ...patch } : c))) })),
   async save() {
     await setLayoutConfig({ data: JSON.stringify(get().pages) });
   },

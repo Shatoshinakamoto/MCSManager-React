@@ -6,6 +6,7 @@ import "@/assets/variables.scss";
 import "@/assets/variables-dark.scss";
 import "@/assets/global.scss";
 import "@/assets/bg-extend-theme.scss";
+import "@/assets/antd-compat.scss";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

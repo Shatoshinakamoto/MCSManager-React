@@ -71,6 +71,14 @@ export class RemoteServiceConfig {
   public apiKey = "";
   public remoteMappings: RemoteMappingEntry[] = [];
 
+  // Johnnykins passport pairing with this daemon, filled in by the first
+  // successful connection. SECURITY: secret; never returned by the node APIs.
+  public passport = {
+    daemonId: "",
+    daemon: { secret: "", salt: "" },
+    legacyDaemon: { password: "", salt: "" }
+  };
+
   connectOpts: Partial<SocketOptions & ManagerOptions> = {
     multiplex: false,
     reconnectionDelayMax: 1000 * 5,
