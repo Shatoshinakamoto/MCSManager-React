@@ -1,0 +1,151 @@
+// Ported verbatim from AppHeader.vue scoped styles to keep the header identical.
+
+@use "@/assets/global.scss" as *;
+
+.nav-button-warning:hover {
+  background-color: rgba(255, 193, 7, 0.34) !important;
+}
+
+.nav-button-success:hover {
+  background-color: rgba(64, 156, 216, 0.12) !important;
+}
+
+.nav-button-danger:hover {
+  background-color: #ff19116f !important;
+}
+
+.nav-button-primary:hover {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.nav-button-success:hover {
+  background-color: #48e6635a !important;
+}
+
+.phone-menu {
+  .phone-menu-btn {
+    padding: 16px 8px;
+    border-bottom: 1px solid var(--color-gray-4);
+    color: var(--color-gray-12);
+  }
+
+  .phone-menu-btn-active {
+    background-color: rgba(64, 156, 216, 0.12);
+  }
+}
+
+.app-header-content-for-phone {
+  height: 60px;
+  width: 100%;
+
+  // display: flex;
+  // justify-content: space-between;
+  // align-items: center;
+  // margin: 0px;
+  .card-panel {
+    background-color: var(--app-header-bg);
+    margin-top: 8px;
+
+    button {
+      color: var(--color-always-white) !important;
+    }
+  }
+
+  .phone-nav-button,
+  .phone-nav-button * {
+    margin: 0px 6px;
+  }
+}
+
+.app-header-wrapper {
+  box-shadow: 0 2px 4px 0 var(--card-shadow-color);
+  background-image: url("@/assets/side.png");
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--app-header-bg);
+  backdrop-filter: saturate(180%) blur(20px);
+  color: var(--app-header-text-color);
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+
+  z-index: 20;
+
+  // Smooth height transition
+  transition: height 0.3s ease-in-out;
+
+  .app-header-content {
+    @extend .global-app-container;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: var(--header-height);
+
+    // Smooth height transition
+    transition: height 0.3s ease-in-out;
+
+    .btns {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .nav-button {
+    margin: 0 4px;
+    font-size: 14px;
+    transition: all 0.4s;
+    color: var(--app-header-text-color) !important;
+    text-align: center;
+    padding: 8px 12px;
+    min-width: 40px;
+    cursor: pointer;
+    border-radius: 6px;
+    user-select: none;
+  }
+
+  .right-nav-button {
+    margin: 0 2px;
+    font-size: 14px;
+    padding: 8px 8px;
+  }
+
+  .icon-button {
+    font-size: 16px !important;
+  }
+  .nav-button:hover {
+    background-color: rgba(215, 215, 215, 0.261);
+  }
+
+  .nav-button-active {
+    background-color: rgba(215, 215, 215, 0.35);
+  }
+
+  .logo {
+    cursor: pointer;
+  }
+
+  .pro-mode-order-container {
+    @extend .nav-button;
+    @extend .nav-button-success;
+  }
+
+  // Sync margin
+  @media (max-width: 1470px) {
+    .app-header-content,
+    .app-header-content-for-phone {
+      margin: 0px 25px;
+    }
+  }
+
+  @media (max-width: 992px) {
+    .app-header-content {
+      margin: 0px 8px;
+    }
+  }
+}

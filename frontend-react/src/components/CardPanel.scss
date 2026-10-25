@@ -1,0 +1,28 @@
+// Port of CardPanel.vue scoped styles (class names kept for SCSS parity).
+.card-panel-padding {
+  padding: 16px;
+}
+.card-panel {
+  border: 1px solid var(--card-border-color);
+  background-color: var(--background-color-white);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+
+  .card-panel-title {
+    font-weight: 600;
+    color: var(--text-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: -4px;
+    margin-bottom: 8px;
+  }
+  .card-panel-content {
+    flex-grow: 1;
+    color: var(--text-color);
+    position: relative;
+    overflow: hidden;
+    word-break: break-all;
+  }
+}

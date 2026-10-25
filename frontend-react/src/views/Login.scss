@@ -1,0 +1,50 @@
+// Ported from Login.vue styles.
+
+@keyframes scaleAnimation {
+  0% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(0.9);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.login-page-container {
+  position: fixed;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+  top: 0px;
+
+  background-color: #29292957;
+  backdrop-filter: saturate(120%) blur(10px);
+  transition: all 0.8s;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  .login-page-body {
+    padding: 12px;
+    padding-top: 84px;
+    max-width: 1260px !important;
+    margin: 0 auto;
+    height: 100%;
+    position: relative;
+    .main-flex-center {
+      margin-top: 0 !important;
+      position: absolute;
+      left: 0px;
+      right: 0px;
+      bottom: 0px;
+      top: 0px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: left !important;
+    }
+  }
+}

@@ -1,0 +1,172 @@
+// Ported from Install.vue scoped styles (:deep() flattened to a descendant selector).
+
+.install-page-container {
+  position: fixed;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+  top: 0px;
+  background-color: #29292957;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: saturate(120%) blur(10px);
+  z-index: 200;
+  transition: all 0.8s;
+
+  .install-panel {
+    transition: all 0.6s;
+    max-width: 480px;
+    width: 100%;
+    background-color: var(--login-panel-bg);
+    backdrop-filter: saturate(120%) blur(12px);
+    padding: 40px;
+    max-height: 100%;
+  }
+
+  .language-select-panel {
+    max-width: 640px;
+  }
+
+  .card-panel-content {
+    overflow: auto !important;
+  }
+}
+
+.language-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 0 20px;
+
+  @media (max-width: 576px) {
+    grid-template-columns: 1fr;
+    padding: 0 10px;
+  }
+}
+
+.language-card {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  padding: 16px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-gray-3);
+  background: var(--color-gray-4);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, rgba(24, 144, 255, 0.05) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  &:hover {
+    border-color: var(--color-gray-4);
+
+    &::before {
+      opacity: 0.5;
+    }
+  }
+}
+
+.language-card-active {
+  border-color: #1890ff !important;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.15) 0%, rgba(24, 144, 255, 0.08) 100%);
+
+  &::before {
+    opacity: 1 !important;
+  }
+
+  .language-check {
+    background: #1890ff;
+    border-color: #1890ff;
+  }
+
+  .check-icon {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .language-label {
+    text-align: center;
+    color: #1890ff;
+  }
+}
+
+.language-card-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.language-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 0px solid var(--color-gray-4);
+  background-color: var(--color-gray-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.check-icon {
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.language-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text-1);
+  transition: all 0.3s ease;
+}
+
+.final-btn {
+  padding: 10px 12px;
+  border: 1px solid var(--color-gray-2);
+  background-color: var(--color-gray-2);
+
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.4s;
+  border-radius: 6px;
+
+  &:hover {
+    border: 1px solid var(--color-gray-8);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.16);
+  }
+}
+
+@keyframes scaleAnimation {
+  0% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(0.9);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
