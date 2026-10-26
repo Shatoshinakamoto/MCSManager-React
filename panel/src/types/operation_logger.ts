@@ -153,6 +153,8 @@ export type UserConfigChangeOptions = {
   password_reset?: boolean;
   config_before?: any;
   config_after?: any;
+  /** Nodes skipped while clearing OS account links (best effort). */
+  os_account_warnings?: string[];
 } & GlobalGeneralOptions;
 
 export type UserLoginOptions = {

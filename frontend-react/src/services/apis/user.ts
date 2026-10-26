@@ -29,11 +29,17 @@ export const addUser = defineApi<{ data: { username: string; password: string; p
   url: "/api/auth",
   method: "POST"
 });
-export const editUserInfo = defineApi<{ data: { config: Partial<EditUserInfo>; uuid: string } }, boolean>({
+/** `true`, or the node steps the panel had to skip (an offline node while unlinking an OS account). */
+export type EditUserResult = true | { warnings: string[] };
+/** Node steps the panel skipped while saving a user edit, for a warning toast. */
+export function osAccountWarnings(res: EditUserResult | undefined): string[] {
+  return res && typeof res === "object" && Array.isArray(res.warnings) ? res.warnings.map(String) : [];
+}
+export const editUserInfo = defineApi<{ data: { config: Partial<EditUserInfo>; uuid: string } }, EditUserResult>({
   url: "/api/auth",
   method: "PUT"
 });
-export const updateUserInstance = defineApi<{ data: { config: { instances: UserInstance[] }; uuid: string } }, boolean>({
+export const updateUserInstance = defineApi<{ data: { config: { instances: UserInstance[] }; uuid: string } }, EditUserResult>({
   url: "/api/auth",
   method: "PUT"
 });

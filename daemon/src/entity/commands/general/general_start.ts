@@ -4,6 +4,7 @@ import fs from "fs-extra";
 import { killProcess } from "mcsmanager-common";
 import { $t } from "../../../i18n";
 import logger from "../../../service/log";
+import { reconcileBoundWorkspace } from "../../../service/os_account_binding";
 import { getRunAsUserParams } from "../../../tools/system_user";
 import Instance from "../../instance/instance";
 import { IInstanceProcess } from "../../instance/interface";
@@ -79,6 +80,8 @@ export default class GeneralStartCommand extends AbsStartCommand {
       throw new StartupError($t("TXT_CODE_general_start.cmdEmpty"));
     }
 
+    // Bound instances: hand the workspace to the linked OS account when its top folder is not theirs.
+    await reconcileBoundWorkspace(instance, "start");
     const runAsConfig = await getRunAsUserParams(instance);
 
     logger.info("----------------");

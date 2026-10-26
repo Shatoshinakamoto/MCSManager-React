@@ -32,6 +32,7 @@ import { NetworkLimitService } from "./network_limit_service";
 import InstanceSubsystem from "./system_instance";
 import { getLinuxSystemId } from "../tools/system_user";
 import { sleep } from "../utils/sleep";
+import { boundIdentity, reconcileBoundWorkspace } from "./os_account_binding";
 
 type PublicPortArray = {
   [key: string]: {
@@ -517,12 +518,20 @@ export class SetupDockerContainer extends AsyncTask {
       }
     }
 
-    // Convert Linux host username to UID:GID format for Docker.
+    // Container user: the instance's OS account binding first (fails closed and
+    // hands the bind-mounted workspace over when needed), else runAs.
+    // TODO(security): Docker user-namespace remapping (userns-remap) is not detected;
+    // with it, uid:gid in the container is a different host uid than the linked account.
     const runAs = instance.config.runAs?.trim();
     let dockerUser: string | undefined = runAs || undefined;
+    const bound = await boundIdentity(instance);
     const shouldResolveHostUser =
-      runAs && process.platform === "linux" && !runAs.includes(":") && !/^\d+$/.test(runAs);
-    if (shouldResolveHostUser) {
+      !bound && runAs && process.platform === "linux" && !runAs.includes(":") && !/^\d+$/.test(runAs);
+    if (bound?.kind === "posix") {
+      await reconcileBoundWorkspace(instance, "start");
+      dockerUser = `${bound.uid}:${bound.gid}`;
+      logger.info(`Docker User: ${dockerUser} (linked OS account ${instance.config.osAccount})`);
+    } else if (shouldResolveHostUser) {
       try {
         const { uid, gid } = await getLinuxSystemId(runAs);
         dockerUser = `${uid}:${gid}`;

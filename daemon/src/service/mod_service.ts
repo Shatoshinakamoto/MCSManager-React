@@ -9,6 +9,7 @@ import { resolveMCDRServerRoot } from "./mcdr_service";
 import logger from "./log";
 import InstanceSubsystem from "./system_instance";
 import FileManager from "./system_file";
+import { writeAsInstanceOwner } from "../tools/file_ownership";
 
 export interface ModInfo {
   name: string;
@@ -434,7 +435,10 @@ export class ModService {
     );
     logger.info(`[ModService] Options: ${JSON.stringify(options)}`);
 
-    await downloadManager.downloadFromUrl(url, targetPath, options.fallbackUrl);
+    // The mod (and a mods/plugins folder made for it) belongs to the instance's account.
+    await writeAsInstanceOwner(instance, targetPath, () =>
+      downloadManager.downloadFromUrl(url, targetPath, options.fallbackUrl)
+    );
   }
 
   public async getModConfig(

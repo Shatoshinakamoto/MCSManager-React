@@ -27,6 +27,12 @@ export default class InstanceConfig implements IGlobalInstanceConfig {
   public updateCommand: string = "";
 
   public runAs: string = "";
+  /**
+   * OS account this instance is bound to through the panel ("" = none).
+   * Set only by service/os_account_binding.ts (instance/os_account/apply),
+   * never by parameters(): see docs/features/os-user-accounts.md.
+   */
+  public osAccount: string = "";
   public crlf = os.platform() === "win32" ? 2 : 1; // 1: \n  2: \r\n
   public category = 0;
   public basePort = 0;

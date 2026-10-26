@@ -6,10 +6,15 @@
  * Assigning a non-Docker instance shows the upstream warning that the user
  * could reach the host through it; the admin must tick the box to continue.
  *
+ * When the user is linked to an OS account, assigning an instance hands its
+ * folder over to that account on the node (docs/features/os-user-accounts.md);
+ * the page says so, waits long enough for a large folder, and reloads the
+ * stored list afterwards so a refused change never looks saved.
+ *
  * Security: the panel enforces that only admins may change assignments; the
  * warning is a usability safeguard, not an access control.
  */
-import { Button, Col, Popconfirm, Row, Table, Typography } from "antd";
+import { Alert, Button, Col, Popconfirm, Row, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useState } from "react";
@@ -22,7 +27,7 @@ import type { WidgetProps } from "@/config/widgets";
 import { useLayoutCardTools } from "@/hooks/useCardTools";
 import { useScreen } from "@/hooks/useScreen";
 import { t } from "@/lang/i18n";
-import { updateUserInstance, userInfoByUuid } from "@/services/apis/user";
+import { osAccountWarnings, updateUserInstance, userInfoByUuid } from "@/services/apis/user";
 import { message } from "@/tools/antdStatic";
 import { reportErrorMsg } from "@/tools/validator";
 import type { UserInstance } from "@/types";
@@ -34,12 +39,16 @@ export default function AccessSettings({ card }: WidgetProps) {
   const { getMetaOrRouteValue } = useLayoutCardTools(card);
   const userUuid = getMetaOrRouteValue("uuid");
   const [rows, setRows] = useState<UserInstance[]>([]);
+  const [osAccount, setOsAccount] = useState("");
 
   const refresh = useCallback(async () => {
     if (!userUuid) return;
     try {
       const info = await userInfoByUuid({ params: { uuid: userUuid, advanced: true }, forceRequest: true });
-      if (info) setRows([...info.instances]);
+      if (info) {
+        setRows([...info.instances]);
+        setOsAccount(info.osAccount ?? "");
+      }
     } catch (err) {
       reportErrorMsg(err);
     }
@@ -51,11 +60,14 @@ export default function AccessSettings({ card }: WidgetProps) {
 
   const save = async (instances: UserInstance[]) => {
     try {
-      await updateUserInstance({ data: { config: { instances }, uuid: String(userUuid) } });
+      // A linked account means the nodes hand folders over first (up to 15 minutes).
+      const res = await updateUserInstance({ data: { config: { instances }, uuid: String(userUuid) }, timeout: osAccount ? 16 * 60_000 : undefined });
       message.success(t("TXT_CODE_d3de39b4"));
-      void refresh();
+      for (const w of osAccountWarnings(res)) message.warning(w, 10);
     } catch (err) {
       reportErrorMsg(err);
+    } finally {
+      void refresh();
     }
   };
 
@@ -159,6 +171,11 @@ export default function AccessSettings({ card }: WidgetProps) {
             }
           />
         </Col>
+        {osAccount && (
+          <Col span={24}>
+            <Alert type="info" showIcon title={t("TXT_CODE_OSACCOUNT_ASSIGN_NOTICE", { account: osAccount })} />
+          </Col>
+        )}
         <Col span={24}>
           <CardPanel className="h-100">
             <Table<UserInstance>

@@ -16,6 +16,9 @@ who may use it and when.
 | `johnnykins.runAs.defaultUser` runs instances with an empty "Run As" as that account instead of root. | Daemon, same file; also used for file manager ownership |
 | Windows ignores "Run As", as upstream does. | Daemon |
 
+An instance whose users are **linked to an OS account** runs as that account instead, whatever "Run As" says;
+the field then shows the linked account and is locked. See [os-user-accounts.md](os-user-accounts.md).
+
 For Docker instances "Run As" is the container user (`--user`). It needs no root daemon, is still limited to
 Web Admins, and the daemon's account limits do not apply to it.
 
@@ -29,7 +32,8 @@ reason. With `allowedUsers` set it becomes a drop-down.
 2. In `daemon/data/Config/global.json` set `johnnykins.runAs` ([settings](../configuration/daemon-johnnykins.md#johnnykinsrunas)), restart the daemon.
 3. Log in as a Web Admin, open the instance, Instance Settings > Advanced Settings > Run As, pick the account, save.
 4. Give that account its instance folder: `sudo chown -R <account>: <instance folder>`. If it cannot open the
-   folder, the console prints this command when the instance starts.
+   folder, the console prints this command when the instance starts. Linking the instance's user to the account
+   instead ([os-user-accounts.md](os-user-accounts.md)) hands the folder over safely and keeps it that way.
 
 ## 3. How it is secure
 
@@ -48,7 +52,8 @@ reason. With `allowedUsers` set it becomes a drop-down.
   file manager. Give the Web Admin role only to people who already administer the host.
 - The access hint for the instance folder ignores supplementary groups, so it can warn about a folder the account
   can in fact open through a group.
-- The daemon does not change folder ownership by itself (upstream's choice, to avoid surprises).
+- "Run As" alone does not change folder ownership (upstream's choice, to avoid surprises). Linked OS accounts
+  do: [os-user-accounts.md](os-user-accounts.md).
 
 ## 5. Tests
 

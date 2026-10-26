@@ -36,6 +36,7 @@ import { modService } from "../service/mod_service";
 import { ROLE } from "../service/protocol";
 import FileManager from "../service/system_file";
 import uploadManager from "../service/upload_manager";
+import { resolveInstanceFileOwnership } from "../tools/file_ownership";
 
 // Some instances operate router authentication middleware
 routerApp.use((event, ctx, data, next) => {
@@ -677,10 +678,15 @@ routerApp.on("instance/mods/delete", async (ctx, data) => {
 routerApp.on("instance/mods/install", async (ctx, data) => {
   const { instanceUuid, url, fileName, type, fallbackUrl } = data;
   try {
+    // A bound instance whose OS account is gone refuses here, before the download starts.
+    const target = InstanceSubsystem.getInstance(instanceUuid);
+    if (target) await resolveInstanceFileOwnership(target);
     // async
-    modService.installMod(instanceUuid, url, fileName, type, {
-      fallbackUrl
-    });
+    modService
+      .installMod(instanceUuid, url, fileName, type, {
+        fallbackUrl
+      })
+      .catch((err: any) => logger.error(`[ModService] Install failed: ${fileName}`, err));
     protocol.response(ctx, true);
   } catch (err: any) {
     protocol.responseError(ctx, err, { disablePrint: true });

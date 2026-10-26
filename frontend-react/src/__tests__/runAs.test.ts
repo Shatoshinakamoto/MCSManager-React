@@ -24,6 +24,13 @@ describe("run as field", () => {
     expect(runAsFieldState({ isWebAdmin: true, isGlobal: false, isDocker: false, info: root })).toEqual({ kind: "edit", options: undefined });
   });
 
+  it("shows the linked OS account instead of Run as, except on Windows", () => {
+    expect(runAsFieldState({ isWebAdmin: true, isGlobal: false, isDocker: false, info: root, linkedAccount: "alice" })).toEqual({ kind: "locked", reason: "linked" });
+    expect(runAsFieldState({ isWebAdmin: false, isGlobal: false, isDocker: true, info: root, linkedAccount: "alice" })).toEqual({ kind: "locked", reason: "linked" });
+    const win = { ...root, platform: "win32", supported: false };
+    expect(runAsFieldState({ isWebAdmin: true, isGlobal: false, isDocker: false, info: win, linkedAccount: "alice" })).toEqual({ kind: "locked", reason: "windows" });
+  });
+
   it("is locked on Windows and for the global instance", () => {
     expect(runAsFieldState({ isWebAdmin: true, isGlobal: false, isDocker: false, info: { ...root, platform: "win32", supported: false } })).toEqual({ kind: "locked", reason: "windows" });
     expect(runAsFieldState({ isWebAdmin: true, isGlobal: true, isDocker: false, info: root })).toEqual({ kind: "locked", reason: "global" });

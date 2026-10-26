@@ -116,6 +116,13 @@ What each setting does (details in [features/run-as-user.md](features/run-as-use
   `sudo chown -R mcsm-games: /srv/mcsmanager/instances/<instance-id>`. The console prints this command if the
   account cannot open the folder.
 
+Instead of `chown` by hand, a Web Admin can **link panel users to OS accounts** (**Users > Configuration > OS
+account**). Assigning an instance to a linked user then hands its folder over to that account, recursively and
+with execute permissions kept, runs the instance as that account, and gives the account its own Java runtimes.
+Keep the instance folder's parents passable (`chmod 755`, as in step 2), and if `/opt/mcsmanager/daemon` is closed
+to other accounts set `"defaultJavaDataPath": "/srv/mcsmanager/java"` (mode 755) so they can reach their runtimes.
+Details: [features/os-user-accounts.md](features/os-user-accounts.md).
+
 > SECURITY-WARNING: on a root daemon, a Web Admin can still reach root through the global terminal and the
 > global file manager. Give the Web Admin/Owner role only to people who already have root on this host.
 
@@ -167,6 +174,9 @@ holds other important data, SSH keys for other systems, or sudo rights.
 - Do not install it as a service running as `LocalSystem`; that account is more powerful than an Administrator.
 - An administrator may need to allow ports 23333 and 24444 in Windows Defender Firewall once.
 - "Run As" is not available on Windows; the field is locked in the instance settings.
+- Panel users can still be linked to Windows accounts: the account gets full control of its instance folders and
+  read/execute on its Java runtimes through ACLs, while instances keep running as the daemon's account
+  ([features/os-user-accounts.md](features/os-user-accounts.md)).
 
 ## 8. Panel roles and OS accounts
 
@@ -174,7 +184,7 @@ holds other important data, SSH keys for other systems, or sudo rights.
 |---|---|
 | User | Runs instances assigned to them, as whatever account the instance is set to. Cannot change start commands unless `allowChangeCmd` is on. |
 | Admin | Creates and edits instances, so can run commands as the daemon's account or `defaultUser`. Cannot set "Run As". |
-| Web Admin/Owner | Everything above, plus "Run As", daemon settings, the global terminal and file manager. |
+| Web Admin/Owner | Everything above, plus "Run As", linking users to OS accounts, daemon settings, the global terminal and file manager. |
 
 Turn on **Settings > Additional Security > Enforce Web Admin role** after giving yourself the Web Admin role, so
 that plain Admins cannot reach the panel-wide pages ([configuration/panel-additional-security.md](configuration/panel-additional-security.md)).

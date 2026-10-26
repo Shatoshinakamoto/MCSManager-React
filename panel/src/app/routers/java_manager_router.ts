@@ -1,3 +1,10 @@
+/**
+ * Java Manager API. Every call names the instance it is made for
+ * (`instanceId`, checked against the caller's assignments below) and the
+ * panel passes it on, so a daemon can scope runtimes to the instance's
+ * linked OS account (daemon: routers/java_manager_router.ts,
+ * docs/features/os-user-accounts.md).
+ */
 import Router from "@koa/router";
 import { ROLE } from "../entity/user";
 import permission from "../middleware/permission";
@@ -31,7 +38,10 @@ router.get(
   async (ctx) => {
     const daemonId = String(ctx.query.daemonId);
     const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
-    const response = await new RemoteRequest(remoteService).request("java_manager/list");
+    // The instance decides which runtimes are listed (shared + its OS account's own).
+    const response = await new RemoteRequest(remoteService).request("java_manager/list", {
+      instanceId: String(ctx.query.instanceId)
+    });
     ctx.body = response;
   }
 );
@@ -77,9 +87,11 @@ router.post(
   async (ctx) => {
     const daemonId = String(ctx.query.daemonId);
     const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
+    // Downloads for an instance linked to an OS account go to (and belong to) that account.
     const response = await new RemoteRequest(remoteService).request("java_manager/download", {
       name: ctx.request.body.name,
-      version: ctx.request.body.version
+      version: ctx.request.body.version,
+      instanceId: String(ctx.query.instanceId)
     });
     ctx.body = response;
   }
@@ -114,7 +126,8 @@ router.delete(
   permission({ level: ROLE.ADMIN }),
   validator({
     query: {
-      daemonId: String
+      daemonId: String,
+      instanceId: String
     },
     body: {
       id: String
@@ -125,7 +138,8 @@ router.delete(
     const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
 
     const response = await new RemoteRequest(remoteService).request("java_manager/delete", {
-      id: ctx.request.body.id
+      id: ctx.request.body.id,
+      instanceId: String(ctx.query.instanceId)
     });
     ctx.body = response;
   }

@@ -16,6 +16,8 @@ declare global {
     processType: ProcessType;
     updateCommand: string;
     runAs: string;
+    /** OS account linked through the panel ("" = none); set only by the binding routes. */
+    osAccount?: string;
     actionCommandList: any[];
     crlf: number;
     category: number;
@@ -72,6 +74,10 @@ declare global {
     info: IJavaInfo;
     path: string;
     usingInstances: string[];
+    /** Id to select or delete it with: the fullname, or "<fullname>@<scope>" for an account's own runtime. */
+    id?: string;
+    /** Account scope ("<uid>-<gid>" or a SID); absent for shared runtimes. */
+    scope?: string;
   }
 
   interface IGlobalInstanceDockerConfig {

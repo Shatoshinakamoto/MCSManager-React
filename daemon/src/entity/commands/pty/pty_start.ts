@@ -10,6 +10,7 @@ import { v4 } from "uuid";
 import { PTY_PATH } from "../../../const";
 import { $t } from "../../../i18n";
 import logger from "../../../service/log";
+import { reconcileBoundWorkspace } from "../../../service/os_account_binding";
 import { getRunAsUserParams } from "../../../tools/system_user";
 import { globalConfiguration } from "../../config";
 import Instance from "../../instance/instance";
@@ -204,6 +205,8 @@ export default class PtyStartCommand extends AbsStartCommand {
       pipeName = `\\\\.\\pipe\\mcsmanager-${pipeId}`;
     }
 
+    // Bound instances: hand the workspace to the linked OS account when its top folder is not theirs.
+    await reconcileBoundWorkspace(instance, "start");
     const runAsConfig = await getRunAsUserParams(instance);
 
     // Prepare PTY parameters

@@ -3,7 +3,7 @@
 Format: [Keep a Changelog](https://keepachangelog.com). Newest first.
 Base: upstream MCSManager commit `ad4f903` (2026-10-24, panel 10.22.0, daemon 4.19.3).
 
-## [Unreleased] - 2026-10-25
+## [Unreleased] - 2026-10-26
 
 ### Added
 - `frontend-react/`: React 19 + antd 6 port of the web UI, built beside the Vue `frontend/` until cutover. Talks to the unchanged panel API and reuses `languages/*.json` and the saved layout JSON.
@@ -52,6 +52,8 @@ Base: upstream MCSManager commit `ad4f903` (2026-10-24, panel 10.22.0, daemon 4.
 - React UI leftover sweep: every Vue component upstream ships but does not open is now ported: command assistant (back as the **Command Helper** button beside the start command, as in the Johnnykins fork), Docker version choice, the older ping dialog, framed-page box and dialog with its message bridge, `NoPreviewCard`, `TextContainer`, `TerminalTags`, `Empty`, the `queryAsyncTask` API, and the "terminal could not start" and "mappings not available" notices. ([docs](features/react-frontend.md#vue-components-upstream-ships-but-does-not-open))
 - Browser test `e2e/full.spec.ts`: a real run against a live panel and daemon that creates an instance, opens every route (including the instance pages), starts it, sends a console line and reads it back, uses the Command Helper and every Instance Settings tab, creates a file and sees it in the file manager, then deletes the instance. Fails on page errors, console errors, 5xx answers, "not ported" text and cards stuck loading. ([docs](commands/frontend-react.md))
 - Tests: 16 for the leftover ports, including hostile messages to the iframe bridge.
+- **Link panel users to OS accounts** (OpenSpec change `link-panel-users-to-os-accounts`). A Web Admin sets a user's **OS account** on the Users page; on every node the user's instances then run as that account (Linux, macOS, Docker), their folders are handed over to it recursively with execute permissions kept (race-safe descriptor walk, links and hard links skipped, setuid/setgid dropped, top folder closed to others), file manager, upload, unzip, copy, URL download, mod install, install and update writes go to it, and the Java Manager keeps per-account runtimes it owns. Edits are checked on every node before anything changes and saved only when all nodes succeed; unlinking and deletion never wait for an offline node. Windows nodes give the account folder access (ACLs) only. New daemon routes `instance/os_account/check` and `instance/os_account/apply`, daemon setting `johnnykins.runAs.handOverPaths`, user field `osAccount`. UI: OS account field and column on the Users page, a notice on the assignment page, the linked account shown in a locked Run As field, an account scope line and tags in the Java Manager; texts in all 12 languages. ([docs](features/os-user-accounts.md))
+- Tests: 28 daemon (run as root with real accounts), 11 panel and 6 UI tests for OS account links.
 
 ### Changed
 - A root daemon logs a warning at startup while `johnnykins.runAs.defaultUser` is empty.
@@ -65,6 +67,10 @@ Base: upstream MCSManager commit `ad4f903` (2026-10-24, panel 10.22.0, daemon 4.
 - Panel-wide routes require `ROLE.WEBADMIN`, which falls back to `ROLE.ADMIN` until `webAdminEnforced` is on, so upgraded panels behave as before.
 - `crossDomain`'s `*` header is skipped while the CORS allow-list is on.
 - `common`: exports the passport module; adds `seedrandom@3.0.5` (legacy scramble) and `@types/seedrandom@3.0.8`.
+- An instance linked to an OS account runs as that account even when its "Run As" says otherwise; the instance settings show the linked account instead.
+- Java Manager calls now carry the instance (`instanceId` on list, download and delete); runtimes are selected by `id`, which is `name@scope` for an account's own runtime. Shared runtimes keep their plain name.
+- `PUT /api/auth` returns `{ warnings: [...] }` instead of `true` when it had to skip an offline node while unlinking an OS account.
+- `GET /api/auth/` (own user info) includes `osAccount`.
 
 ### Removed
 - Panel CSP: the `'unsafe-eval'` fallback for frontends without the `mcsm-csp` strict marker. A non-React `index.html` now only logs a startup warning.
@@ -72,6 +78,7 @@ Base: upstream MCSManager commit `ad4f903` (2026-10-24, panel 10.22.0, daemon 4.
 ### Fixed
 - `install-dependents.sh` now downloads the daemon's helper programs into `daemon/lib/` like `install-dependents.bat` does (upstream's Linux script never did), for Linux and macOS on any architecture upstream publishes, plus the 7-Zip licence files. Both scripts now stop on HTTP errors instead of saving the error page as a program. ([docs](commands/frontend-react.md#root-scripts-repository-root))
 - Downloads and bundles were missing `frontend-react/src/widgets/logs/` (the operation-log card), so `npm run dev` and the build failed with `Failed to resolve import "@/widgets/logs/OperationLogCard"`. The root `.gitignore` rule `logs` matched the source folder; it is now excluded from that rule. Releases are now checked by building a clean `git archive` copy.
+- React UI: the "Empty = this daemon's default user" hint under Run As showed `{{user}}` literally; it now uses the UI's `{name}` placeholder.
 - React UI: deprecated antd 6 props (`Timeline` `items.children`, `Space` `direction`, `Alert` `message`) replaced, which removes the dev-server console warnings.
 - Browser tests: the login helper waited only for the URL to leave `/login`, then raced the `/` to `/instances` redirect on the slower dev server. The panel header checks now skip on the Vite dev server, which does not send them.
 - Daemon: a Web Admin (permission 20) could not use the Minecraft quick install or reinstall from the market, because the daemon only accepted permission 10 for those tasks.
@@ -80,6 +87,7 @@ Base: upstream MCSManager commit `ad4f903` (2026-10-24, panel 10.22.0, daemon 4.
 - Intermittent daemon connection failures from the fork's auth: passport list overwrite and eviction, passport types 1-3 never verifying, daemon locking itself after a failed sync, missing verification timeout, ban DB startup race. Details in [features/passport-auth.md](features/passport-auth.md#why-connections-sometimes-failed-in-the-fork).
 
 ### Security
+- OS account links never accept uids, gids or paths from the browser; nodes resolve names themselves, refuse root and apply `allowedUsers` (CWE-639, CWE-250). The folder hand-over works through descriptors without following links (CWE-59, CWE-367), and linked instances fail closed when their account cannot be used (CWE-636). See [SECURITY-LOG](SECURITY-LOG.md).
 - "Run As" account names are looked up with `execFile` and `--`; a name starting with `-` could be read as an option of `id` (CWE-88).
 - Daemon HTTP responses carry a sandboxing CSP and `nosniff`, so downloaded files never run in the browser (CWE-79).
 - Session token moved out of URLs into the `X-MCSM-Token` header (CWE-598); the panel compares tokens in constant time (CWE-208).

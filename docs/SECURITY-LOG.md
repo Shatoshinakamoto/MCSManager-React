@@ -2,6 +2,30 @@
 
 Entries follow the template in the project's secure development standards. Newest first.
 
+## 2026-10-26 - Panel users linked to OS accounts: safe folder hand-over and per-account Java
+- **Type:** new feature with security controls (OpenSpec change `link-panel-users-to-os-accounts`)
+- **CVE / CWE / advisory:** none; CWE-250, CWE-269, CWE-639, CWE-59, CWE-61, CWE-367, CWE-732, CWE-276, CWE-636, CWE-22, CWE-78, CWE-88
+- **Severity:** not CVSS-scored; high by assessment if done naively, because a root daemon changes file owners for other accounts: a `chown -R` that follows a planted link, or a uid taken from a request, would hand host files to an instance user.
+- **Affected:** daemon `src/tools/os_account.ts`, `src/tools/owner_tree.ts`, `src/tools/windows_acl.ts`, `src/tools/file_ownership.ts`, `src/tools/system_user.ts`, `src/service/os_account_binding.ts`, `src/routers/os_account_router.ts`, `src/service/java_manager.ts`, `src/routers/java_manager_router.ts`, `src/routers/file_router.ts`, `src/routers/http_router.ts`, `src/service/docker_process_service.ts`, start/install/update commands; panel `src/app/service/os_account_service.ts`, `routers/user_overview_router.ts`, `routers/manage_user_router.ts`, `service/exchange_service.ts`, `routers/java_manager_router.ts`; React `widgets/UserList.tsx`, `widgets/user/AccessSettings.tsx`, `widgets/instance/dialogs/InstanceDetail.tsx`, `widgets/instance/dialogs/JavaManager.tsx`.
+- **What changed:**
+  - Only a Web Admin can set a user's `osAccount` (NIST AC-5, AC-6); Admins' attempts are ignored and logged. The panel stores names only and derives affected instances from its own records, never from the request (CWE-639).
+  - Nodes resolve names with `execFile` and fixed patterns (no numeric ids, no options, CWE-88), refuse uid 0 even with `allowRoot` (CWE-250), apply `allowedUsers`, and need root to change a process account.
+  - One identity per instance; identity changes need a stopped instance; parent folders are checked, never changed; only folders strictly below the instance data folder or `handOverPaths` are walked, so a working directory of `/` or `/etc` cannot be given away (CWE-22).
+  - The hand-over opens every entry with `O_NOFOLLOW` through `/proc/self/fd/<dir>`, re-checks device and inode, and uses `fchown`/`fchmod`; symlinks, other file systems and hard-linked files are skipped (CWE-59, CWE-61, CWE-367). setuid/setgid are dropped and the top folder is closed to other accounts (CWE-732, CWE-276).
+  - Panel edits run check on every node, then apply, then save; a refused or failed node stores nothing and the error says what already changed (no false success). Unlinking is best effort so access removal never waits for a node.
+  - Linked instances fail closed: no start and no file manager write when the account cannot be used (CWE-636). Writes resolve the owner before writing.
+  - Per-account Java runtimes: unpacked in a root-only staging folder, handed over, then moved into a root-owned 0711 scope folder with root-owned 0600 records; another account's runtime cannot be selected; removal runs `rm -rf` as the owning account, so root never walks an account-owned tree.
+  - Windows: SID lookup by a fixed `-EncodedCommand` PowerShell script with the name in an environment variable; only account SIDs (`S-1-5-21-…`, RID ≥ 1000, not a local group) get `icacls` grants; the previous account's grant is removed on change (CWE-78).
+- **Why it is secure now:** the host account is chosen only by host administrators, checked again on every node, and applied by a walk that a user who controls the folder cannot redirect outside it (ASVS V4.1.3; NIST AC-6, SI-11; the least-privilege requirement of the Application Security and Development STIG).
+- **Residual risk:**
+  - SECURITY-WARNING: a Web Admin on a root daemon can still reach root through the global terminal and file manager.
+  - SECURITY-WARNING: a linked account owns and can change everything in its instance folders, including start scripts.
+  - TODO(security): file manager delete and reinstall still remove files as root inside account-owned folders (path-based, open to a symlink race); upstream behaviour for any instance that runs as another account.
+  - TODO(security): macOS has no `/proc/self/fd`: hand-over is refused there (only already-owned folders are accepted) and file manager owner changes still validate by path.
+  - TODO(security): Windows support is only tested with a mocked runner; domain group names are not recognised as groups.
+  - TODO(security): Docker user-namespace remapping is not detected.
+- **Verification:** daemon tests as root with real accounts (owner walk incl. a link swapped in mid-path, policy, bindings, fail-closed writes, after-install hand-over, per-account Java), panel tests (Web Admin only, check → apply → save, refusal stores nothing, offline unlink), UI tests; live on a root daemon with `alice` and `bob` through the panel API (27 checks: owners and modes, `/etc/shadow` link and outside hard link untouched, process runs as `alice`, root and mixed identities refused, Admin cannot link) and in Chromium (field, validation, root refusal message, locked Run As, Java scope; `alice`'s own runtime ran as `alice`).
+
 ## 2026-10-26 - Framed-page message bridge locked to allowed origins
 - **Type:** hardening (port of an upstream component that is not opened yet)
 - **CVE / CWE / advisory:** none; CWE-346, CWE-940, CWE-284, CWE-1021

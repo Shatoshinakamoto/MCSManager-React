@@ -128,10 +128,11 @@ router.post("/upload/:key", async (ctx) => {
 
       const fileSaveAbsolutePath = fileManager.toAbsolutePath(fileSaveRelativePath);
 
+      // Resolved before the file lands, so a bound instance whose account is gone refuses it.
+      const ownership = await resolveInstanceFileOwnership(instance);
       await fs.move(uploadedFile.filepath, fileSaveAbsolutePath, {
         overwrite: true
       });
-      const ownership = await resolveInstanceFileOwnership(instance);
       if (ownership) await syncInstancePathOwnership(instance, fileSaveAbsolutePath, ownership);
 
       if (unzip) {
@@ -181,6 +182,8 @@ router.post("/upload-new/:key", async (ctx) => {
     if (!instance) throw new Error("Access denied: No instance found");
     const uploadDir = mission.parameter.uploadDir;
     const cwd = instance.absoluteCwdPath();
+    // A bound instance whose OS account is gone refuses the upload before any byte lands.
+    await resolveInstanceFileOwnership(instance);
     const overwrite = ctx.query.overwrite !== "false";
     const filePath = await FileWriter.getPath(cwd, uploadDir, filename, overwrite);
     let fr = uploadManager.getByPath(filePath);

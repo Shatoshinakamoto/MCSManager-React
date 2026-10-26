@@ -22,6 +22,7 @@ import { globalConfiguration } from "../entity/config";
 import Instance from "../entity/instance/instance";
 import { chown } from "fs/promises";
 import { $t } from "../i18n";
+import { boundIdentity } from "./os_account";
 
 // Promisify the exec function to use async/await
 const execFileAsync = promisify(execFile);
@@ -143,11 +144,25 @@ export function findBlockingPath(dir: string, uid: number, gid: number): string 
   return undefined;
 }
 
+/**
+ * Process identity for a start: the instance's OS account binding first
+ * (fails closed; the start commands hand the workspace over beforehand with
+ * service/os_account_binding.ts reconcileBoundWorkspace), else its runAs,
+ * else johnnykins.runAs.defaultUser, else the daemon's own account.
+ */
 export async function getRunAsUserParams(instance: Instance) {
   // Get user info for the target user (Linux/macOS only). Windows ignores runAs, as upstream does.
   let uid: number | undefined = undefined;
   let gid: number | undefined = undefined;
   let isEnableRunAs = false;
+  if (instance.config.osAccount && process.platform !== "win32") {
+    const bound = await boundIdentity(instance);
+    if (bound?.kind === "posix") {
+      const daemonUid = typeof process.getuid === "function" ? process.getuid() : undefined;
+      const switching = bound.uid !== daemonUid;
+      return { uid: switching ? bound.uid : undefined, gid: switching ? bound.gid : undefined, isEnableRunAs: switching, runAsName: instance.config.osAccount };
+    }
+  }
   const policy = runAsPolicy();
   const name = effectiveRunAsName(instance.config.runAs, policy);
   if (name && process.platform !== "win32") {

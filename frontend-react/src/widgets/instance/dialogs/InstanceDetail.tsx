@@ -206,7 +206,8 @@ function InstanceDetailDialog(props: Props) {
 
   const isGlobal = !!info && info.config?.nickname === GLOBAL_INSTANCE_NAME;
   const isDocker = cfg.processType === "docker";
-  const runAsState = runAsFieldState({ isWebAdmin, isGlobal, isDocker, info: nodeRunAs });
+  const linkedAccount = cfg.osAccount || "";
+  const runAsState = runAsFieldState({ isWebAdmin, isGlobal, isDocker, info: nodeRunAs, linkedAccount });
   const runAsPlaceholder = nodeRunAs?.defaultUser && !isDocker ? t("TXT_CODE_RUNAS_DEFAULT_USER", { user: nodeRunAs.defaultUser }) : t("TXT_CODE_9aa83c05");
   const docker = cfg.docker;
   const set = (patch: Partial<IGlobalInstanceConfig>) => setCfg((c) => ({ ...c, ...patch }));
@@ -513,7 +514,7 @@ function InstanceDetailDialog(props: Props) {
             />
           ) : (
             <Input
-              value={cfg.runAs}
+              value={runAsState.kind === "locked" && runAsState.reason === "linked" ? linkedAccount : cfg.runAs}
               placeholder={runAsPlaceholder}
               disabled={runAsState.kind === "locked"}
               onChange={(e) => set({ runAs: e.target.value })}
@@ -521,13 +522,20 @@ function InstanceDetailDialog(props: Props) {
           )}
           {runAsState.kind === "locked" && runAsState.reason !== "global" && (
             <Typography.Text type={runAsState.reason === "not-root" && cfg.runAs ? "warning" : "secondary"} style={{ fontSize: 12 }}>
-              {runAsState.reason === "not-web-admin"
-                ? t("TXT_CODE_RUNAS_WEBADMIN_ONLY")
-                : runAsState.reason === "windows"
-                  ? t("TXT_CODE_RUNAS_WINDOWS")
-                  : cfg.runAs
-                    ? t("TXT_CODE_RUNAS_NOT_ROOT_SET")
-                    : t("TXT_CODE_RUNAS_NOT_ROOT")}
+              {runAsState.reason === "linked"
+                ? t("TXT_CODE_OSACCOUNT_LINKED_POSIX", { account: linkedAccount })
+                : runAsState.reason === "not-web-admin"
+                  ? t("TXT_CODE_RUNAS_WEBADMIN_ONLY")
+                  : runAsState.reason === "windows"
+                    ? t("TXT_CODE_RUNAS_WINDOWS")
+                    : cfg.runAs
+                      ? t("TXT_CODE_RUNAS_NOT_ROOT_SET")
+                      : t("TXT_CODE_RUNAS_NOT_ROOT")}
+            </Typography.Text>
+          )}
+          {linkedAccount && nodeRunAs?.platform === "win32" && !isGlobal && (
+            <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+              {t("TXT_CODE_OSACCOUNT_LINKED_WINDOWS", { account: linkedAccount })}
             </Typography.Text>
           )}
         </Item>

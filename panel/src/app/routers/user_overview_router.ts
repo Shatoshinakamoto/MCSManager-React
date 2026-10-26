@@ -5,7 +5,9 @@ import { ICompleteUser } from "../entity/entity_interface";
 import { ROLE } from "../entity/user";
 import { $t } from "../i18n";
 import permission from "../middleware/permission";
+import { logger } from "../service/log";
 import { getOperationLoggerOperator, operationLogger } from "../service/operation_logger";
+import { canSetOsAccount, commitBindingChange, normaliseOsAccount } from "../service/os_account_service";
 import { getUserFromCtx } from "../service/passport_service";
 import userSystem from "../service/user_service";
 import { assertCanGrant, assertCanManage, assertNotLastWebAdmin } from "../service/web_admin";
@@ -46,8 +48,30 @@ router.put("/", permission({ level: ROLE.WEBADMIN }), async (ctx: Koa.Parameteri
       return copy;
     };
 
+    // OS account link (Web Admin only) and instance assignments go through the
+    // nodes first: they check and apply the binding, then the edit is stored.
+    let osAccount: string | undefined;
+    if (config && "osAccount" in config) {
+      const requested = config.osAccount;
+      delete config.osAccount;
+      if (canSetOsAccount(ctx)) {
+        osAccount = normaliseOsAccount(requested);
+      } else if (String(requested ?? "").trim() !== (target?.osAccount ?? "")) {
+        logger.warn(`[OsAccount] Ignored an OS account change from ${actor?.userName ?? "unknown"}: only Web Admins can link OS accounts.`);
+      }
+    }
+
     const userBefore = snapshotUserConfig(uuid);
-    await userSystem.edit(uuid, config);
+    const persist = async () => {
+      await userSystem.edit(uuid, config);
+      if (osAccount !== undefined && osAccount !== target?.osAccount) await userSystem.setOsAccount(uuid, osAccount);
+    };
+    let warnings: string[] = [];
+    if (target && ((osAccount !== undefined && osAccount !== target.osAccount) || config.instances)) {
+      ({ warnings } = await commitBindingChange([{ uuid, osAccount, instances: config.instances }], persist));
+    } else {
+      await persist();
+    }
     const userAfter = snapshotUserConfig(uuid);
 
     const diff = diffConfig(userBefore, userAfter);
@@ -59,12 +83,14 @@ router.put("/", permission({ level: ROLE.WEBADMIN }), async (ctx: Koa.Parameteri
           target_user_name: userBefore?.userName,
           password_reset: passWord ? true : undefined,
           config_before: diff?.before,
-          config_after: diff?.after
+          config_after: diff?.after,
+          os_account_warnings: warnings.length ? warnings : undefined
         },
         "warning"
       );
     }
-    ctx.body = true;
+    // Skipped node steps (an offline node while unlinking) are shown to the admin.
+    ctx.body = warnings.length ? { warnings } : true;
   } catch (error: any) {
     ctx.throw(500, error.message);
   }
@@ -83,7 +109,8 @@ router.get(
         permission: user.permission,
         instances: user.instances,
         loginTime: user.loginTime,
-        registerTime: user.registerTime
+        registerTime: user.registerTime,
+        osAccount: user.osAccount || ""
       });
     });
     ctx.body = users;

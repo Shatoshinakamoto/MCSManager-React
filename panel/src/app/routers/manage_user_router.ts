@@ -5,6 +5,7 @@ import { $t } from "../i18n";
 import permission from "../middleware/permission";
 import validator from "../middleware/validator";
 import { getOperationLoggerOperator, operationLogger } from "../service/operation_logger";
+import { commitBindingChange } from "../service/os_account_service";
 import { getUserFromCtx, register } from "../service/passport_service";
 import { assertCanGrant, assertCanManage, assertNotLastWebAdmin } from "../service/web_admin";
 import userSystem from "../service/user_service";
@@ -37,6 +38,7 @@ router.post(
 // Delete user
 router.del("/", permission({ level: ROLE.WEBADMIN }), async (ctx: Koa.ParameterizedContext) => {
   const uuids = ctx.request.body;
+  if (!Array.isArray(uuids)) throw new Error("Type error, expected a list of user uuids.");
   const actor = getUserFromCtx(ctx);
   // Refuse the whole batch before deleting anything if it touches a Web Admin
   // the caller may not manage, or would remove the last one.
@@ -46,18 +48,26 @@ router.del("/", permission({ level: ROLE.WEBADMIN }), async (ctx: Koa.Parameteri
     assertNotLastWebAdmin(target);
   }
   try {
-    for (const iterator of uuids) {
-      const user = userSystem.getUserByUuid(iterator);
-      operationLogger.log(
-        "user_delete",
-        {
-          ...getOperationLoggerOperator(ctx),
-          target_user_name: user?.userName || "Unknown"
-        },
-        "warning"
-      );
-      await userSystem.deleteInstance(iterator);
-    }
+    // Linked OS accounts: the nodes clear (or narrow) the instance links best
+    // effort; an offline node never blocks a deletion.
+    await commitBindingChange(
+      uuids.map((uuid: string) => ({ uuid: String(uuid), deleted: true })),
+      async () => {
+        for (const iterator of uuids) {
+          const user = userSystem.getUserByUuid(iterator);
+          operationLogger.log(
+            "user_delete",
+            {
+              ...getOperationLoggerOperator(ctx),
+              target_user_name: user?.userName || "Unknown"
+            },
+            "warning"
+          );
+          await userSystem.deleteInstance(iterator);
+        }
+      },
+      { bestEffort: true }
+    );
     ctx.body = true;
   } catch (error: any) {
     ctx.throw(500, $t("TXT_CODE_router.user.deleteFailure") as string);

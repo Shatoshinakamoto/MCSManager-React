@@ -106,6 +106,9 @@ root on Linux or macOS. Full description: [features/run-as-user.md](../features/
 |---|---|---|
 | `defaultUser` | `""` | Account for instances whose "Run As" is empty. `""` keeps upstream behaviour: they run as the daemon's own account, which is root on a root daemon (the daemon logs a warning). |
 | `allowedUsers` | `[]` | The only accounts "Run As" may name. Empty means any account except root. Shown as a list in the instance settings. |
-| `allowRoot` | `false` | Allow "Run As" to name root (uid 0). |
+| `allowRoot` | `false` | Allow "Run As" to name root (uid 0). Never applies to linked OS accounts, which can never be root. |
+| `handOverPaths` | `[]` | Absolute folders, besides the instance data folder, whose sub-folders may be handed to an OS account linked through the panel. A drive or file system root is ignored. A linked instance outside all of them is accepted only when its folder already belongs to the account. ([details](../features/os-user-accounts.md#6-settings)) |
+
+`allowedUsers` also limits the accounts panel users can be linked to ([features/os-user-accounts.md](../features/os-user-accounts.md)).
 
 Not used for Docker instances, where "Run As" sets the container user.

@@ -1,6 +1,7 @@
 import { $t } from "../../../i18n";
 import { InstanceUpdateAction } from "../../../service/instance_update_action";
 import logger from "../../../service/log";
+import { handBackAfterTask } from "../../../service/os_account_binding";
 import Instance from "../../instance/instance";
 import InstanceCommand from "../base/command";
 
@@ -37,6 +38,8 @@ export default class GeneralUpdateCommand extends InstanceCommand {
         $t("TXT_CODE_general_update.error", { err: err })
       );
     } finally {
+      // Bound instances: hand what the task wrote to the linked OS account first.
+      await handBackAfterTask(instance, "update");
       this.stopped(instance);
     }
   }

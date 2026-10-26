@@ -27,6 +27,12 @@ export class User implements IUser {
   open2FA = false;
   ssoSub = "";
   ssoBound = false;
+  /**
+   * Host OS account this user is linked to ("" = none). Set only by a Web
+   * Admin through service/os_account_service.ts, which first has every node
+   * check and apply it to the user's instances.
+   */
+  osAccount = "";
 }
 
 export enum ROLE {

@@ -10,6 +10,9 @@
  *   never displayed back; editing a user leaves the password unchanged unless
  *   a new one is typed (the field starts empty, as upstream).
  * - API keys are never shown, only whether one exists.
+ * - The OS account link is editable only for a Web Admin (the panel enforces
+ *   the same rule and the nodes refuse root and unknown accounts); others see
+ *   it read-only and never send a change (NIST AC-6; CWE-269).
  */
 import { DownOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import { App, Button, Col, Dropdown, Form, Input, Modal, Row, Select, Space, Spin, Table, Tag, Typography } from "antd";
@@ -22,9 +25,9 @@ import type { WidgetProps } from "@/config/widgets";
 import { useAppRouters } from "@/hooks/useAppRouters";
 import { useScreen } from "@/hooks/useScreen";
 import { t } from "@/lang/i18n";
-import { addUser, deleteUsers, editUserInfo, searchUsers, ssoUnbind, type EditUserInfo, type UserSearchResult } from "@/services/apis/user";
+import { addUser, deleteUsers, editUserInfo, searchUsers, ssoUnbind, osAccountWarnings, type EditUserInfo, type UserSearchResult } from "@/services/apis/user";
 import { isWebAdminUser, useAppState } from "@/stores/appState";
-import { PASSWORD_REGEX, reportErrorMsg } from "@/tools/validator";
+import { isValidOsAccountName, PASSWORD_REGEX, reportErrorMsg } from "@/tools/validator";
 import { ROLE, type BaseUserInfo } from "@/types";
 import "./UserList.scss";
 
@@ -41,8 +44,15 @@ const emptyUser: EditUserInfo = {
   secret: "",
   open2FA: false,
   ssoSub: "",
-  ssoBound: false
+  ssoBound: false,
+  osAccount: ""
 };
+
+/**
+ * Linking or changing an OS account hands the user's instance folders over on
+ * every node, which can take minutes on a large server; the panel allows 15.
+ */
+const OS_ACCOUNT_TIMEOUT_MS = 16 * 60_000;
 
 export default function UserList({ card }: WidgetProps) {
   const { message, modal } = App.useApp();
@@ -144,6 +154,13 @@ export default function UserList({ card }: WidgetProps) {
     setDialog({ open: true, addMode: false, title: t("TXT_CODE_79f9a172") });
   };
 
+  const canLinkOsAccount = isWebAdminUser(me);
+  const osAccountRule = {
+    validator: async (_: unknown, value: string) => {
+      if (!isValidOsAccountName((value ?? "").trim())) throw new Error(t("TXT_CODE_OSACCOUNT_INVALID"));
+    }
+  };
+
   const submitUser = async () => {
     let values: EditUserInfo;
     try {
@@ -159,8 +176,13 @@ export default function UserList({ card }: WidgetProps) {
       } else {
         const config: EditUserInfo = { ...editing, ...values, permission: Number(values.permission) };
         if (!config.passWord) delete config.passWord;
-        await editUserInfo({ data: { config, uuid: editing.uuid } });
+        // Only a Web Admin sends the OS account; for anyone else it is display only.
+        const osAccountChanged = canLinkOsAccount && (config.osAccount ?? "").trim() !== (editing.osAccount ?? "");
+        if (canLinkOsAccount) config.osAccount = (config.osAccount ?? "").trim();
+        else delete config.osAccount;
+        const res = await editUserInfo({ data: { config, uuid: editing.uuid }, timeout: osAccountChanged ? OS_ACCOUNT_TIMEOUT_MS : undefined });
         message.success(t("TXT_CODE_27efac3b"));
+        for (const w of osAccountWarnings(res)) message.warning(w, 10);
       }
       setDialog((d) => ({ ...d, open: false }));
     } catch (err) {
@@ -200,6 +222,18 @@ export default function UserList({ card }: WidgetProps) {
       ? [
           { align: "center" as const, title: t("TXT_CODE_d7ee9ba"), dataIndex: "loginTime", key: "loginTime", minWidth: 200 },
           { align: "center" as const, title: t("TXT_CODE_c5c56801"), dataIndex: "registerTime", key: "registerTime", minWidth: 200 }
+        ]
+      : []),
+    ...(!isPhone
+      ? [
+          {
+            align: "center" as const,
+            title: t("TXT_CODE_OSACCOUNT_COLUMN"),
+            dataIndex: "osAccount",
+            key: "osAccount",
+            minWidth: 140,
+            render: (v?: string) => (v ? <Tag>{v}</Tag> : "-")
+          }
         ]
       : []),
     ...(!isPhone && ssoEnabled
@@ -285,6 +319,25 @@ export default function UserList({ card }: WidgetProps) {
               <Input.Password placeholder={t("TXT_CODE_4ea93630")} autoComplete="new-password" />
             </Form.Item>
           </Form.Item>
+          {!dialog.addMode && (
+            <Form.Item label={t("TXT_CODE_OSACCOUNT_LABEL")}>
+              <Typography.Paragraph>
+                <Typography.Text type="secondary">{t("TXT_CODE_OSACCOUNT_DESC")}</Typography.Text>
+              </Typography.Paragraph>
+              {canLinkOsAccount ? (
+                <Form.Item noStyle name="osAccount" rules={[osAccountRule]} validateTrigger={["onChange", "onBlur"]}>
+                  <Input placeholder={t("TXT_CODE_OSACCOUNT_PLACEHOLDER")} allowClear autoComplete="off" spellCheck={false} maxLength={40} />
+                </Form.Item>
+              ) : (
+                <>
+                  <Input value={editing.osAccount || ""} placeholder="-" disabled />
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {t("TXT_CODE_OSACCOUNT_WEBADMIN_ONLY")}
+                  </Typography.Text>
+                </>
+              )}
+            </Form.Item>
+          )}
           {!dialog.addMode && (
             <Form.Item label="APIKEY">
               {editing.apiKey ? (

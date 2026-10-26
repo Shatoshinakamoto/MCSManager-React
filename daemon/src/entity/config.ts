@@ -171,7 +171,11 @@ export class JohnnykinsDaemonConfig {
     // Accounts an instance may run as. Empty = any account except root.
     allowedUsers: [] as string[],
     // Allow runAs to name root (uid 0).
-    allowRoot: false
+    allowRoot: false,
+    // OS accounts linked through the panel (service/os_account_binding.ts): extra folders
+    // (absolute paths) whose sub-folders may be handed to the linked account, besides the
+    // instance data folder. Workspaces elsewhere are only accepted when the account owns them.
+    handOverPaths: [] as string[]
   };
 }
 

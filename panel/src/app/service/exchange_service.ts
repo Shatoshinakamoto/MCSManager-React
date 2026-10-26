@@ -7,6 +7,7 @@ import RemoteRequest from "../service/remote_command";
 import RemoteServiceSubsystem from "../service/remote_service";
 import user_service from "../service/user_service";
 import { getInstancesByUuid, IAdvancedInstanceInfo } from "./instance_service";
+import { commitBindingChange } from "./os_account_service";
 
 // A commercial platform for selling instances released by the MCSManager Dev Team.
 // Currently, it only supports some countries and regions.
@@ -196,6 +197,34 @@ export async function buyOrRenewInstance(
 
     let user = user_service.getUserByUserName(username);
     let newPassword = "";
+
+    if (user?.osAccount) {
+      // Linked to an OS account: the node binds and hands the new instance over
+      // before the purchase is confirmed. On failure the new instance is removed
+      // and the redeem code kept (service/os_account_service.ts).
+      const linkedUser = user;
+      const instances = [...linkedUser.instances, { instanceUuid: newInstanceId, daemonId: node_id }];
+      try {
+        await commitBindingChange([{ uuid: linkedUser.uuid, instances }], async () => {
+          await handler.onCreateConfirm?.(newInstanceId);
+          await user_service.edit(linkedUser.uuid, { instances });
+        });
+      } catch (err) {
+        await remoteRequest
+          .request("instance/delete", { instanceUuids: [newInstanceId], deleteFile: true })
+          .catch(() => undefined);
+        throw err;
+      }
+      return {
+        instance_id: newInstanceId,
+        instance_config: newInstanceConfig,
+        username: linkedUser.userName,
+        password: "",
+        uuid: linkedUser.uuid,
+        expire: toNumber(newInstanceConfig.endTime) || 0,
+        instance_info: formatInstanceData(newInstanceConfig)
+      };
+    }
 
     await handler.onCreateConfirm?.(newInstanceId);
 

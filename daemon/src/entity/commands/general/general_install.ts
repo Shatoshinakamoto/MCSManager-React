@@ -1,6 +1,7 @@
 import fs from "fs-extra";
 import { $t } from "../../../i18n";
 import { QuickInstallTask } from "../../../service/async_task_service/quick_install";
+import { handBackAfterTask } from "../../../service/os_account_binding";
 import Instance from "../../instance/instance";
 import InstanceCommand from "../base/command";
 
@@ -61,6 +62,8 @@ export default class GeneralInstallCommand extends InstanceCommand {
         $t("TXT_CODE_general_update.error", { err })
       );
     } finally {
+      // Bound instances: hand what the task wrote to the linked OS account first.
+      await handBackAfterTask(instance, "install");
       this.stopped(instance);
     }
   }

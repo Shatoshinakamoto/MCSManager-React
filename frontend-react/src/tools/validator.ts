@@ -17,6 +17,23 @@ export function reportErrorMsg(err: unknown): void {
  */
 export const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[\x00-\x7F]{9,36}$/;
 
+/**
+ * OS account names a user may be linked to, the same rule as the panel and
+ * daemon (panel/src/app/service/os_account_service.ts): a POSIX login name or
+ * a Windows "name" or "COMPUTER\\name". Numeric ids are refused, so an id can never be
+ * mistaken for a name (CWE-20). Checked again server-side; this only gives
+ * early feedback.
+ */
+export const OS_ACCOUNT_POSIX_REGEX = /^[A-Za-z_][A-Za-z0-9_-]{0,31}$/;
+export const OS_ACCOUNT_WINDOWS_REGEX = /^(?:[A-Za-z0-9][A-Za-z0-9.-]{0,14}\\)?[A-Za-z0-9_](?:[A-Za-z0-9 ._-]{0,18}[A-Za-z0-9_-])?$/;
+
+/** True for "" (no link) or a valid POSIX or Windows account name. */
+export function isValidOsAccountName(value: string): boolean {
+  if (value === "") return true;
+  if (/^\d+$/.test(value)) return false;
+  return OS_ACCOUNT_POSIX_REGEX.test(value) || OS_ACCOUNT_WINDOWS_REGEX.test(value);
+}
+
 /** antd Form validation errors carry `errorFields`; show the first message (upstream getValidatorErrorMsg). */
 export function getValidatorErrorMsg(error: unknown, def = ""): string {
   const e = error as { message?: string; errorFields?: { errors?: string[] }[] } | null | undefined;

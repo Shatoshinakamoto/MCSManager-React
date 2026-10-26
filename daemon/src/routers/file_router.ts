@@ -1,3 +1,4 @@
+import fs from "fs-extra";
 import { t } from "i18next";
 import os from "os";
 import path from "path";
@@ -11,8 +12,20 @@ import * as protocol from "../service/protocol";
 import { routerApp } from "../service/router_app";
 import InstanceSubsystem from "../service/system_instance";
 import uploadManager from "../service/upload_manager";
-import { resolveInstanceFileOwnership } from "../tools/file_ownership";
+import {
+  firstMissingPath,
+  resolveInstanceFileOwnership,
+  syncTreeOwnershipWithinRoot,
+  writeAsInstanceOwner
+} from "../tools/file_ownership";
 import { checkSafeUrl } from "../utils/url";
+
+/** The instance a file request names (the middleware below has checked it exists). */
+function instanceOf(data: any): Instance {
+  const instance = InstanceSubsystem.getInstance(data?.instanceUuid);
+  if (!instance) throw new Error($t("TXT_CODE_3bfb9e04"));
+  return instance;
+}
 
 // Some routers operate router authentication middleware
 routerApp.use((event, ctx, data, next) => {
@@ -162,7 +175,10 @@ routerApp.on("file/touch", async (ctx, data) => {
   try {
     const target = data.target;
     const fileManager = getFileManager(data.instanceUuid);
-    await fileManager.newFile(target);
+    // New files and any folders made for them belong to the instance's account.
+    await writeAsInstanceOwner(instanceOf(data), fileManager.toAbsolutePath(target), () =>
+      fileManager.newFile(target)
+    );
     protocol.response(ctx, true);
   } catch (error: any) {
     protocol.responseError(ctx, error);
@@ -174,7 +190,9 @@ routerApp.on("file/mkdir", async (ctx, data) => {
   try {
     const target = data.target;
     const fileManager = getFileManager(data.instanceUuid);
-    await fileManager.mkdir(target);
+    await writeAsInstanceOwner(instanceOf(data), fileManager.toAbsolutePath(target), () =>
+      fileManager.mkdir(target)
+    );
     protocol.response(ctx, true);
   } catch (error: any) {
     protocol.responseError(ctx, error);
@@ -212,10 +230,19 @@ routerApp.on("file/download_from_url", async (ctx, data) => {
       return;
     }
 
-    downloadManager.downloadFromUrl(url, targetPath, fallbackUrl).catch((err) => {
-      if (err.name === "CanceledError") return;
-      logger.error(`Download failed: ${url} -> ${targetPath}`, err);
-    });
+    // Resolve the owner before downloading (bound instances fail closed), hand over after.
+    const instance = instanceOf(data);
+    const ownership = await resolveInstanceFileOwnership(instance);
+    const created = firstMissingPath(instance.absoluteCwdPath(), targetPath);
+    downloadManager
+      .downloadFromUrl(url, targetPath, fallbackUrl)
+      .then(async () => {
+        if (ownership) await syncTreeOwnershipWithinRoot(instance.absoluteCwdPath(), created, ownership);
+      })
+      .catch((err) => {
+        if (err.name === "CanceledError") return;
+        logger.error(`Download failed: ${url} -> ${targetPath}`, err);
+      });
 
     protocol.response(ctx, {});
   } catch (error: any) {
@@ -250,11 +277,20 @@ routerApp.on("file/copy", async (ctx, data) => {
     // [["a.txt","b.txt"],["cxz","zzz"]]
     const targets = data.targets;
     const fileManager = getFileManager(data.instanceUuid);
+    const instance = instanceOf(data);
+    // Resolved up front so a bound instance whose account is gone refuses the copy.
+    const ownership = await resolveInstanceFileOwnership(instance);
     for (const target of targets) {
       // Intentionally NOT awaited: copying very large files can take far longer
       // than the client request timeout, so the copy runs detached in the
       // background and the response returns immediately.
-      fileManager.copy(target[0], target[1]);
+      const dest = fileManager.toAbsolutePath(target[1]);
+      fileManager
+        .copy(target[0], target[1])
+        .then(async () => {
+          if (ownership) await syncTreeOwnershipWithinRoot(instance.absoluteCwdPath(), dest, ownership);
+        })
+        .catch((err: any) => logger.error(`Copy failed: ${target[0]} -> ${target[1]}`, err));
     }
     protocol.response(ctx, true);
   } catch (error: any) {
@@ -268,8 +304,18 @@ routerApp.on("file/move", async (ctx, data) => {
     // [["a.txt","b.txt"],["cxz","zzz"]]
     const targets = data.targets;
     const fileManager = getFileManager(data.instanceUuid);
+    const instance = instanceOf(data);
+    const ownership = await resolveInstanceFileOwnership(instance);
     for (const target of targets) {
       await fileManager.move(target[0], target[1]);
+      // A rename keeps the owner; a move across file systems copies, so check the result.
+      if (ownership) {
+        const dest = fileManager.toAbsolutePath(target[1]);
+        const st = await fs.lstat(dest).catch(() => undefined);
+        if (st && (st.uid !== ownership.uid || st.gid !== ownership.gid)) {
+          await syncTreeOwnershipWithinRoot(instance.absoluteCwdPath(), dest, ownership);
+        }
+      }
     }
     protocol.response(ctx, true);
   } catch (error: any) {
@@ -278,6 +324,10 @@ routerApp.on("file/move", async (ctx, data) => {
 });
 
 // Delete Files
+// TODO(security): deletes run as the daemon (root on a root daemon) by path. Inside a
+// workspace owned by a linked OS account or a "Run As" account, a folder swapped for a
+// symlink at the right moment can redirect the delete (CWE-367). Upstream behaviour;
+// see docs/features/os-user-accounts.md section 9.
 routerApp.on("file/delete", async (ctx, data) => {
   try {
     const targets = data.targets;
@@ -306,7 +356,12 @@ routerApp.on("file/edit", async (ctx, data) => {
     const target = data.target;
     const text = data.text;
     const fileManager = getFileManager(data.instanceUuid);
-    const result = await fileManager.edit(target, text);
+    const writing = text || typeof text === "string";
+    const result = writing
+      ? await writeAsInstanceOwner(instanceOf(data), fileManager.toAbsolutePath(target), () =>
+          fileManager.edit(target, text)
+        )
+      : await fileManager.edit(target, text);
     protocol.response(ctx, result ? result : true);
   } catch (error: any) {
     protocol.responseError(ctx, error);
@@ -352,7 +407,9 @@ routerApp.on("file/compress", async (ctx, data) => {
     fileTaskStart();
     try {
       if (type === 1) {
-        await fileManager.zip(source, targets, code);
+        await writeAsInstanceOwner(instance, fileManager.toAbsolutePath(source), () =>
+          fileManager.zip(source, targets, code)
+        );
       } else {
         const ownership = await resolveInstanceFileOwnership(instance);
         await fileManager.unzip(source, targets, code, ownership);

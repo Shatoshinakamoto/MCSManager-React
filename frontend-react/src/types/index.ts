@@ -90,6 +90,8 @@ export interface BaseUserInfo {
   open2FA: boolean;
   ssoSub: string;
   ssoBound: boolean;
+  /** Host OS account linked to this user ("" = none); only a Web Admin may change it. */
+  osAccount?: string;
 }
 
 export interface LoginUserInfo extends BaseUserInfo {

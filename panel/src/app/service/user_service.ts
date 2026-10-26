@@ -86,6 +86,17 @@ class UserSubsystem {
     await Storage.getStorage().store("User", uuid, instance);
   }
 
+  /**
+   * Stores a user's OS account link. Only service/os_account_service.ts
+   * calls this, after the nodes applied it; edit() never touches the field.
+   */
+  async setOsAccount(uuid: string, osAccount: string) {
+    const instance = this.getInstance(uuid);
+    if (!instance) return;
+    instance.osAccount = osAccount;
+    await Storage.getStorage().store("User", uuid, instance);
+  }
+
   validatePassword(password = "") {
     if (password.length < 9 || password.length > 36) return false;
     const reg = /(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/;

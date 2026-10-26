@@ -143,6 +143,8 @@ export async function getInstancesByUuid(
     apiKey: user.apiKey ? "__MCSM_SECRET_DATA__" : "",
     isInit: user.isInit,
     open2FA: user.open2FA,
+    // The linked host account name (not a secret): the user's files belong to it.
+    osAccount: user.osAccount || "",
     token: ""
   };
 }

@@ -558,7 +558,7 @@ export default class Instance extends EventEmitter {
     text = text.replace(/\{mcsm_cwd\}/gim, this.absoluteCwdPath());
     text = text.replace(/\{mcsm_uuid\}/gim, this.instanceUuid);
     text = text.replace(/\{mcsm_random\}/gim, randomUUID());
-    text = text.replace(/\{mcsm_run_as\}/gim, this.config.runAs);
+    text = text.replace(/\{mcsm_run_as\}/gim, this.runAsLabel());
     text = text.replace(/\{mcsm_steamcmd\}/gim, STEAM_CMD_PATH);
     text = text.replace(/\{mcsm_instance_id\}/gim, this.instanceUuid);
     text = text.replace(/\{mcsm_instance_name\}/gim, this.config.nickname);
@@ -566,7 +566,7 @@ export default class Instance extends EventEmitter {
 
     const javaId = this.config.java.id;
     if (javaId) {
-      text = text.replace(/\{mcsm_java\}/gim, await javaManager.getJavaRuntimeCommand(javaId));
+      text = text.replace(/\{mcsm_java\}/gim, await javaManager.getJavaRuntimeCommand(javaId, this));
     }
 
     const ports = Array.from(
@@ -586,14 +586,31 @@ export default class Instance extends EventEmitter {
     return this.config.crlf === 2 ? "\r\n" : "\n";
   }
 
+  /**
+   * The account name the process runs as, for {mcsm_run_as} and USER/HOME:
+   * the OS account binding (not on Windows, where it only grants folder
+   * access), else the instance's runAs.
+   */
+  public runAsLabel(): string {
+    if (this.config.osAccount && process.platform !== "win32") return this.config.osAccount;
+    return this.config.runAs;
+  }
+
+  /** Stores the OS account binding. Only service/os_account_binding.ts calls this. */
+  public setOsAccount(name: string) {
+    this.config.osAccount = name;
+    StorageSubsystem.store("InstanceConfig", this.instanceUuid, this.config);
+  }
+
   public generateEnv() {
     let env = process.env;
-    if (this.config.runAs) {
+    const name = this.runAsLabel();
+    if (name) {
       env = {
         ...env,
-        USER: this.config.runAs ?? "",
-        HOME: this.config.runAs ? `/home/${this.config.runAs}` : "",
-        LOGNAME: this.config.runAs ?? ""
+        USER: name,
+        HOME: `/home/${name}`,
+        LOGNAME: name
       };
     }
     return env;

@@ -28,6 +28,7 @@ export interface IUser {
   open2FA?: boolean;
   ssoSub?: string;
   ssoBound?: boolean;
+  osAccount?: string;
 }
 
 export interface ICompleteUser {
@@ -37,6 +38,7 @@ export interface ICompleteUser {
   instances: Array<any>;
   registerTime: string;
   loginTime: string;
+  osAccount?: string;
 }
 
 type RemoteMappingEntry = {

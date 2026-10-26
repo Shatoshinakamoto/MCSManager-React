@@ -2,9 +2,16 @@
  * Java runtimes on the daemon: list, add a local path, download, choose for
  * this instance, delete (port of dialogs/JavaManager.vue).
  * Fix over upstream: "added" is only reported when the add request succeeded.
+ *
+ * For an instance linked to an OS account, the daemon lists the shared
+ * runtimes plus that account's own, and downloads go to the account's own
+ * folder, owned by it (docs/features/os-user-accounts.md). Rows are keyed and
+ * selected by the daemon's `id`, because a shared runtime and an account's
+ * runtime can have the same name. The daemon decides the scope from the
+ * instance's stored link; this dialog only labels it.
  */
 import { DeleteOutlined, DownloadOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
-import { App, Button, Modal, Popconfirm, Table, Typography, type TableColumnsType } from "antd";
+import { Alert, App, Button, Modal, Popconfirm, Table, Tag, Typography, type TableColumnsType } from "antd";
 import { useEffect, useState } from "react";
 import { openAddJavaDialog, openDownloadJavaDialog } from "@/components/fc/JavaDialogs";
 import { t } from "@/lang/i18n";
@@ -12,7 +19,10 @@ import { addJava, deleteJava, downloadJava, getJavaList, usingJava } from "@/ser
 import { openDialog } from "@/stores/dialogHost";
 import { parseTimestamp } from "@/tools/time";
 import type { InstanceDetail } from "@/types/instance";
-import type { JavaInfo, JavaRuntime } from "@/types/javaManager";
+import type { JavaRuntime } from "@/types/javaManager";
+
+/** The id the daemon selects and deletes a runtime by (older daemons: the name). */
+export const javaRuntimeId = (r: JavaRuntime) => r.id ?? r.info.fullname;
 
 interface Props {
   info: InstanceDetail;
@@ -28,6 +38,7 @@ function JavaManager({ info, instanceId, daemonId, done }: Props) {
   const [usingId, setUsingId] = useState(info.config.java?.id ?? "");
   const [changed, setChanged] = useState(false);
   const params = { daemonId, instanceId };
+  const linkedAccount = info.config.osAccount || "";
 
   const errorText = (err: unknown) => void message.error(err instanceof Error ? err.message : String(err));
   const refresh = async (notify = false) => {
@@ -70,18 +81,18 @@ function JavaManager({ info, instanceId, daemonId, done }: Props) {
     }
     await refresh();
   };
-  const handleDelete = async (j: JavaInfo) => {
+  const handleDelete = async (r: JavaRuntime) => {
     try {
-      await deleteJava({ params, data: { id: j.fullname } });
+      await deleteJava({ params, data: { id: javaRuntimeId(r) } });
     } catch (err) {
       errorText(err);
     }
     await refresh();
   };
-  const handleUse = async (j: JavaInfo) => {
+  const handleUse = async (r: JavaRuntime) => {
     try {
-      await usingJava({ params, data: { id: j.fullname } });
-      setUsingId(j.fullname);
+      await usingJava({ params, data: { id: javaRuntimeId(r) } });
+      setUsingId(javaRuntimeId(r));
       setChanged(true);
       message.success(t("TXT_CODE_d3de39b4"));
     } catch (err) {
@@ -91,7 +102,22 @@ function JavaManager({ info, instanceId, daemonId, done }: Props) {
   };
 
   const columns: TableColumnsType<JavaRuntime> = [
-    { align: "center", title: t("TXT_CODE_151d2bb7"), dataIndex: ["info", "fullname"], key: "fullname" },
+    {
+      align: "center",
+      title: t("TXT_CODE_151d2bb7"),
+      dataIndex: ["info", "fullname"],
+      key: "fullname",
+      render: (v: string, r) => (
+        <>
+          {v}
+          {r.scope && (
+            <Tag className="ml-8" color="blue">
+              {linkedAccount || t("TXT_CODE_OSACCOUNT_JAVA_OWN")}
+            </Tag>
+          )}
+        </>
+      )
+    },
     { align: "center", title: t("TXT_CODE_a2e79565"), dataIndex: ["info", "installTime"], key: "installTime", render: (v: number) => parseTimestamp(v) },
     {
       align: "center",
@@ -106,16 +132,16 @@ function JavaManager({ info, instanceId, daemonId, done }: Props) {
       width: 250,
       render: (_, r) => (
         <div className="flex justify-end">
-          {r.info.fullname === usingId ? (
+          {javaRuntimeId(r) === usingId ? (
             <Button className="mr-8" type="link" disabled>
               {t("TXT_CODE_979520ef")}
             </Button>
           ) : (
-            <Button className="mr-8" type="link" disabled={r.info.downloading} onClick={() => void handleUse(r.info)}>
+            <Button className="mr-8" type="link" disabled={r.info.downloading} onClick={() => void handleUse(r)}>
               {t("TXT_CODE_f0dcc8bf")}
             </Button>
           )}
-          <Popconfirm title={t("TXT_CODE_f4f86ba8")} description={t("TXT_CODE_35631d1d")} onConfirm={() => void handleDelete(r.info)}>
+          <Popconfirm title={t("TXT_CODE_f4f86ba8")} description={t("TXT_CODE_35631d1d")} onConfirm={() => void handleDelete(r)}>
             <Button danger type="link" disabled={r.info.downloading}>
               {t("TXT_CODE_ecbd7449")} <DeleteOutlined />
             </Button>
@@ -145,6 +171,7 @@ function JavaManager({ info, instanceId, daemonId, done }: Props) {
           {t("TXT_CODE_e1c637bb").replace("<mcsm_java>", "{mcsm_java}")}
         </Typography.Text>
       </Typography.Paragraph>
+      {linkedAccount && <Alert className="mb-12" type="info" showIcon title={t("TXT_CODE_OSACCOUNT_JAVA_SCOPE", { account: linkedAccount })} />}
       <div className="items-right">
         <Button type="link" icon={<PlusOutlined />} onClick={() => void handleAdd()}>
           {t("TXT_CODE_8900e7ee")}
@@ -158,7 +185,7 @@ function JavaManager({ info, instanceId, daemonId, done }: Props) {
       </div>
       <Table
         className="mt-12"
-        rowKey={(r) => r.info.fullname}
+        rowKey={javaRuntimeId}
         dataSource={list}
         columns={columns}
         scroll={{ x: "max-content" }}
