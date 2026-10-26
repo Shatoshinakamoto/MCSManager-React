@@ -18,8 +18,18 @@ changed through `PUT /api/overview/setting`. Restart the panel after editing the
 | `legacy.panelsSha256` | generated on first start | `panelsSha256` | The panel's legacy pair. |
 | `legacy.passportTtlSeconds` | `60` | – | How long an issued passport waits for the daemon's verification call. |
 
+## `johnnykins.remoteService`
+
+Daemon connection timing, from the fork's `remoteService.heartbeatInterval` and `remoteService.connectionTimeout`.
+The defaults are upstream's values. Changes apply without a restart.
+
+| Key | Default | Fork name | Meaning |
+|---|---|---|---|
+| `heartbeatIntervalMs` | `60000` | `remoteService.heartbeatInterval` (30000) | How often the panel retries daemons that are offline (5000-600000). |
+| `localDaemonRetryMs` | `5000` | `remoteService.connectionTimeout` (60000) | On a panel with no daemons, how often it looks for a daemon on the same machine (1000-600000). |
+
 ## Editing in the web UI
-In the React UI, **Settings → Daemon Passport** edits `mode`, `authTimeoutMs` and the `legacy` options (passport type, token entropy, maximum entropy rounds, passport lifetime). Secrets never reach the browser and cannot be edited there. Changing the mode asks for confirmation, because every daemon whose `johnnykins.passport.mode` differs disconnects until it is changed too. The panel clamps every value again on save (`settings_router.ts`).
+In the React UI, **Settings → Daemon Passport** edits `mode`, `authTimeoutMs`, the two `remoteService` intervals and the `legacy` options (passport type, token entropy, maximum entropy rounds, passport lifetime). Secrets never reach the browser and cannot be edited there. Changing the mode asks for confirmation, because every daemon whose `johnnykins.passport.mode` differs disconnects until it is changed too. The panel clamps every value again on save (`settings_router.ts`).
 
 Daemon-side options (ban list, sanitizer, file manager and Docker gates) are edited in each daemon's `data/Config/global.json`; see [daemon-johnnykins.md](daemon-johnnykins.md).
 

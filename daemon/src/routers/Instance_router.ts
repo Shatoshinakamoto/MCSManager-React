@@ -403,10 +403,13 @@ routerApp.on("instance/asynchronous", (ctx, data) => {
   // Quick install Minecraft server task
   // Why not use the ".execPreset("install", parameter)" that already exists in Instance?
   // Because the instance has not yet been created at this stage.
-  if (taskName === "quick_install" && role === ROLE.ADMIN) {
+  if (taskName === "quick_install" && role >= ROLE.ADMIN) {
     const newInstanceName = String(parameter.newInstanceName);
     const targetLink = String(parameter.targetLink);
     logger.info(`Quick install: Name: ${newInstanceName}`);
+    // SECURITY: templates never choose the OS account; only a Web Admin sets
+    // runAs afterwards through the panel (see docs/features/run-as-user.md).
+    stripTemplateRunAs(parameter);
     const task = createQuickInstallTask(targetLink, newInstanceName, parameter.setupInfo);
     return protocol.response(ctx, task.toObject());
   }
@@ -442,7 +445,8 @@ routerApp.on("instance/asynchronous", (ctx, data) => {
   }
 
   // Install instance via preset package
-  if (taskName === "install_instance" && role === ROLE.ADMIN) {
+  if (taskName === "install_instance" && role >= ROLE.ADMIN) {
+    stripTemplateRunAs(parameter);
     instance
       .execPreset("install", parameter)
       .then(() => {})
@@ -692,3 +696,8 @@ routerApp.on("instance/mods/config_files", async (ctx, data) => {
     protocol.responseError(ctx, err, { disablePrint: true });
   }
 });
+
+/** Removes an OS account (runAs) a market template might carry. */
+function stripTemplateRunAs(parameter: any) {
+  if (parameter?.setupInfo && typeof parameter.setupInfo === "object") delete parameter.setupInfo.runAs;
+}

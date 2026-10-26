@@ -5,7 +5,7 @@ import path from "path";
 import { v4 } from "uuid";
 import { diffConfig } from "../common/config_diff";
 import { MARKET_CACHE_FILE_PATH, SAVE_DIR_PATH } from "../const";
-import SystemConfig, { DataPlaneMode } from "../entity/setting";
+import SystemConfig, { clampRemoteServiceMs, DataPlaneMode } from "../entity/setting";
 import { ROLE } from "../entity/user";
 import { $t, i18next } from "../i18n";
 import { speedLimit } from "../middleware/limit";
@@ -54,6 +54,10 @@ router.get("/setting", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
           maxEntropy: jp.legacy.maxEntropy,
           passportTtlSeconds: jp.legacy.passportTtlSeconds
         }
+      },
+      remoteService: {
+        heartbeatIntervalMs: clampRemoteServiceMs("heartbeatIntervalMs", systemConfig.johnnykins.remoteService?.heartbeatIntervalMs),
+        localDaemonRetryMs: clampRemoteServiceMs("localDaemonRetryMs", systemConfig.johnnykins.remoteService?.localDaemonRetryMs)
       }
     }
   };
@@ -413,6 +417,13 @@ router.put("/setting", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
         if (l.maxEntropy != null) jp.legacy.maxEntropy = Math.min(Math.max(Math.floor(Number(l.maxEntropy) || 3), 1), 10);
         if (l.passportTtlSeconds != null) jp.legacy.passportTtlSeconds = Math.min(Math.max(Math.floor(Number(l.passportTtlSeconds) || 60), 5), 600);
       }
+    }
+
+    const rsIn = config.johnnykins?.remoteService;
+    if (rsIn && typeof rsIn === "object") {
+      const rs = (systemConfig.johnnykins.remoteService ??= { heartbeatIntervalMs: 60000, localDaemonRetryMs: 5000 });
+      if (rsIn.heartbeatIntervalMs != null) rs.heartbeatIntervalMs = clampRemoteServiceMs("heartbeatIntervalMs", rsIn.heartbeatIntervalMs);
+      if (rsIn.localDaemonRetryMs != null) rs.localDaemonRetryMs = clampRemoteServiceMs("localDaemonRetryMs", rsIn.localDaemonRetryMs);
     }
 
     const diff = diffConfig(systemConfigBefore, JSON.parse(JSON.stringify(systemConfig)));

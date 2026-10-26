@@ -3,7 +3,7 @@ import { constants as fsConstants } from "fs";
 import path from "path";
 import type Instance from "../entity/instance/instance";
 import { $t } from "../i18n";
-import { getLinuxSystemId } from "./system_user";
+import { effectiveRunAsName, getLinuxSystemId } from "./system_user";
 
 export interface FileOwnership {
   uid: number;
@@ -31,7 +31,11 @@ export async function resolveInstanceFileOwnership(
 ): Promise<FileOwnership | undefined> {
   if (process.platform === "win32") return undefined;
 
-  const runAs = String(instance.config.runAs || "").trim();
+  // Docker instances use their own runAs only; host processes also fall back to johnnykins.runAs.defaultUser.
+  const runAs =
+    instance.config.processType === "docker"
+      ? String(instance.config.runAs || "").trim()
+      : effectiveRunAsName(instance.config.runAs);
   if (!runAs) return undefined;
 
   const numericIds = runAs.match(/^(\d+):(\d+)$/);

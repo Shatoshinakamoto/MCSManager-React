@@ -87,6 +87,15 @@ sandboxed frame with no access to the panel's page, cookies or login. See
 - The settings API no longer returns `gatewaySecret` or passport secrets.
 - When Web Admin enforcement is on, an API key belonging to a plain admin loses access to panel-wide routes.
 
+## 6a. "Run As" (OS account per instance)
+
+- Only Web Admins can set or change "Run As" now. Existing values stay as they are.
+- An instance set to run as `root` no longer starts unless `johnnykins.runAs.allowRoot` is on in the daemon's
+  `global.json`. Clear the field instead; it already ran as root only because the daemon did.
+- On a daemon that is not root, an instance with another account in "Run As" now stops with a clear message
+  (it failed with `EPERM` before). Clear the field, or follow [install-guide.md](install-guide.md) method A.
+- If your daemon runs as root, set `johnnykins.runAs.defaultUser` so instances stop running as root.
+
 ## 7. After the upgrade
 
 1. Start the daemons, then the panel. Check both logs for `TamperCheck` or `mode_mismatch` errors.

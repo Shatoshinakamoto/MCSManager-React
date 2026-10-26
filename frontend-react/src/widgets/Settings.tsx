@@ -81,7 +81,8 @@ See the License for the specific language governing permissions and
 limitations under the License.`;
 
 const DEFAULT_PASSPORT: JohnnykinsPanelSwitches = {
-  passport: { mode: "standard", authTimeoutMs: 8000, legacy: { passportType: 4, tokenEntropy: true, maxEntropy: 3, passportTtlSeconds: 60 } }
+  passport: { mode: "standard", authTimeoutMs: 8000, legacy: { passportType: 4, tokenEntropy: true, maxEntropy: 3, passportTtlSeconds: 60 } },
+  remoteService: { heartbeatIntervalMs: 60000, localDaemonRetryMs: 5000 }
 };
 
 /** Title + secondary description + control, the repeated block of every pane. */
@@ -138,8 +139,11 @@ export default function Settings({ card }: WidgetProps) {
   const passport = formData?.johnnykins?.passport ?? DEFAULT_PASSPORT.passport;
   const setPassport = (patch: Partial<JohnnykinsPanelSwitches["passport"]>, legacy?: Partial<JohnnykinsPanelSwitches["passport"]["legacy"]>) =>
     setFormData((f) =>
-      f ? { ...f, johnnykins: { passport: { ...passport, ...patch, legacy: { ...passport.legacy, ...(legacy ?? {}) } } } } : f
+      f ? { ...f, johnnykins: { ...f.johnnykins, passport: { ...passport, ...patch, legacy: { ...passport.legacy, ...(legacy ?? {}) } } } } : f
     );
+  const remoteTiming = formData?.johnnykins?.remoteService ?? DEFAULT_PASSPORT.remoteService!;
+  const setRemoteTiming = (patch: Partial<NonNullable<JohnnykinsPanelSwitches["remoteService"]>>) =>
+    setFormData((f) => (f ? { ...f, johnnykins: { ...(f.johnnykins ?? DEFAULT_PASSPORT), remoteService: { ...remoteTiming, ...patch } } } : f));
 
   const settingsPage = () => pages.find((p) => p.page === SETTINGS_PAGE);
 
@@ -652,6 +656,26 @@ export default function Settings({ card }: WidgetProps) {
             step={500}
             style={{ maxWidth: 320, width: "100%" }}
             onChange={(v) => setPassport({ authTimeoutMs: Number(v) || 8000 })}
+          />
+        </Field>
+        <Field title={t("TXT_CODE_JK_HEARTBEAT")} desc={t("TXT_CODE_JK_HEARTBEAT_DESC")}>
+          <InputNumber
+            value={remoteTiming.heartbeatIntervalMs}
+            min={5000}
+            max={600000}
+            step={1000}
+            style={{ maxWidth: 320, width: "100%" }}
+            onChange={(v) => setRemoteTiming({ heartbeatIntervalMs: Number(v) || 60000 })}
+          />
+        </Field>
+        <Field title={t("TXT_CODE_JK_LOCAL_RETRY")} desc={t("TXT_CODE_JK_LOCAL_RETRY_DESC")}>
+          <InputNumber
+            value={remoteTiming.localDaemonRetryMs}
+            min={1000}
+            max={600000}
+            step={1000}
+            style={{ maxWidth: 320, width: "100%" }}
+            onChange={(v) => setRemoteTiming({ localDaemonRetryMs: Number(v) || 5000 })}
           />
         </Field>
         <Typography.Title level={5}>{t("TXT_CODE_JK_LEGACY_TITLE")}</Typography.Title>

@@ -28,6 +28,8 @@ import { openUploadFileDialog } from "@/components/fc/UploadFileDialog";
 import SafeHtml from "@/components/SafeHtml";
 import { GLOBAL_INSTANCE_NAME } from "@/config/const";
 import { instanceTypeTranslation } from "@/hooks/useInstance";
+import { runAsFieldState, useNodeRunAs } from "@/hooks/useNodeRunAs";
+import { useIsWebAdmin } from "@/stores/appState";
 import { useScreen } from "@/hooks/useScreen";
 import { SEARCH_ALL_KEY, type FilterOption } from "@/hooks/useMarketPackages";
 import { getCurrentLang, t } from "@/lang/i18n";
@@ -159,6 +161,9 @@ function InstanceDetailDialog(props: Props) {
   const info: InstanceDetailInfo | undefined = props.mode === "instance" ? props.info : undefined;
   const instanceId = props.mode === "instance" ? props.instanceId : "";
   const daemonId = props.mode === "instance" ? props.daemonId : "";
+  // "Run as": Web Admins only, and for host processes only on a daemon running as root.
+  const isWebAdmin = useIsWebAdmin();
+  const nodeRunAs = useNodeRunAs(daemonId);
   const { message } = App.useApp();
   const { isPhone } = useScreen();
   const [open, setOpen] = useState(true);
@@ -200,6 +205,8 @@ function InstanceDetailDialog(props: Props) {
 
   const isGlobal = !!info && info.config?.nickname === GLOBAL_INSTANCE_NAME;
   const isDocker = cfg.processType === "docker";
+  const runAsState = runAsFieldState({ isWebAdmin, isGlobal, isDocker, info: nodeRunAs });
+  const runAsPlaceholder = nodeRunAs?.defaultUser && !isDocker ? t("TXT_CODE_RUNAS_DEFAULT_USER", { user: nodeRunAs.defaultUser }) : t("TXT_CODE_9aa83c05");
   const docker = cfg.docker;
   const set = (patch: Partial<IGlobalInstanceConfig>) => setCfg((c) => ({ ...c, ...patch }));
   const setDocker = (patch: Partial<IGlobalInstanceDockerConfig>) => setCfg((c) => ({ ...c, docker: { ...c.docker, ...patch } }));
@@ -488,7 +495,34 @@ function InstanceDetailDialog(props: Props) {
             </Tooltip>
           }
         >
-          <Input value={cfg.runAs} placeholder={t("TXT_CODE_9aa83c05")} disabled={isGlobal} onChange={(e) => set({ runAs: e.target.value })} />
+          {runAsState.kind === "edit" && runAsState.options ? (
+            <Select
+              style={{ width: "100%" }}
+              allowClear
+              value={cfg.runAs || undefined}
+              placeholder={runAsPlaceholder}
+              options={runAsState.options.map((u) => ({ label: u, value: u }))}
+              onChange={(v) => set({ runAs: v ?? "" })}
+            />
+          ) : (
+            <Input
+              value={cfg.runAs}
+              placeholder={runAsPlaceholder}
+              disabled={runAsState.kind === "locked"}
+              onChange={(e) => set({ runAs: e.target.value })}
+            />
+          )}
+          {runAsState.kind === "locked" && runAsState.reason !== "global" && (
+            <Typography.Text type={runAsState.reason === "not-root" && cfg.runAs ? "warning" : "secondary"} style={{ fontSize: 12 }}>
+              {runAsState.reason === "not-web-admin"
+                ? t("TXT_CODE_RUNAS_WEBADMIN_ONLY")
+                : runAsState.reason === "windows"
+                  ? t("TXT_CODE_RUNAS_WINDOWS")
+                  : cfg.runAs
+                    ? t("TXT_CODE_RUNAS_NOT_ROOT_SET")
+                    : t("TXT_CODE_RUNAS_NOT_ROOT")}
+            </Typography.Text>
+          )}
         </Item>
       </Col>
     </Row>

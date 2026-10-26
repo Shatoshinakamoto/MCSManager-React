@@ -4,6 +4,8 @@
 |---|---|
 | [CHANGELOG.md](CHANGELOG.md) | Every addition, change, fix and removal in this fork |
 | [SECURITY-LOG.md](SECURITY-LOG.md) | Security patches, hardening, CVE notes and accepted risks |
+| [install-guide.md](install-guide.md) | Installing as root, as a service account, as your own account, on Windows and with Docker, without accidental elevation |
+| [features/run-as-user.md](features/run-as-user.md) | Running instances as another OS account: Web Admin only, root daemon only, allowed and default accounts |
 | [upgrade-guide.md](upgrade-guide.md) | Moving an existing upstream or Johnnykins install to this port |
 | [features/legacy-plugins.md](features/legacy-plugins.md) | Running old plugin-card plugins through the sandboxed host and read-only bridge |
 | [features/react-frontend.md](features/react-frontend.md) | The React port of the web UI: architecture, parity rules, port phases |

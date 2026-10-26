@@ -1,0 +1,34 @@
+# MCSManager daemon, run as the unprivileged "mcsm" account (recommended).
+# Instances run as "mcsm" too; "Run As" is not available in this mode.
+# Install guide: docs/install-guide.md (method B)
+#   sudo cp mcsm-daemon.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now mcsm-daemon
+[Unit]
+Description=MCSManager Daemon (unprivileged)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mcsm
+Group=mcsm
+WorkingDirectory=/opt/mcsmanager/daemon
+ExecStart=/usr/bin/env node --max-old-space-size=8192 --enable-source-maps app.js
+Restart=on-failure
+RestartSec=5
+UMask=0077
+# SIGTERM goes to the daemon only, so its soft shutdown (enableSoftShutdown) stops instances cleanly.
+KillMode=mixed
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

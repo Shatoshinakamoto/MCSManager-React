@@ -13,6 +13,8 @@ export interface JohnnykinsPanelSwitches {
     authTimeoutMs: number;
     legacy: { passportType: number; tokenEntropy: boolean; maxEntropy: number; passportTtlSeconds: number };
   };
+  /** Daemon connection timing (fork: remoteService.heartbeatInterval / connectionTimeout). */
+  remoteService?: { heartbeatIntervalMs: number; localDaemonRetryMs: number };
 }
 
 export interface Settings {

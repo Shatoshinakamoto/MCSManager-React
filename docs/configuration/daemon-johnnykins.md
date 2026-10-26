@@ -65,3 +65,47 @@ Daemon-side switches the panel cannot override.
 | `canSendCommands` | `true` | Allow console input from the panel. |
 | `canFileManager` | `true` | Allow the file manager (`file/*` events). |
 | `docker` | `true` | Allow Docker instances to start. (The fork defaulted this to `false`; it is `true` here to keep upstream Docker support working.) |
+| `ptyAccess` | `true` | Allow the pseudo-terminal (PTY) mode. Off: instances that ask for it start in plain pipe mode instead, with a note in the console. (Fork default `false`, where the start was refused.) |
+| `openFrpAccess` | `true` | Allow OpenFRP tunnels, which download and run `frpc`. Off: the tunnel is skipped with a note in the console. (Fork default `false`.) |
+| `mcStatus` | `true` | Allow the Minecraft status ping (players, version, MOTD) every 60 s. |
+
+The fork's `dockerPty` switch was never read by its code and is not ported.
+
+## `johnnykins.http`
+
+Hardening for the daemon's HTTP server, which carries file uploads and downloads (each needs a one-time
+passport from the panel). Ported from the fork's daemon `cors`, `origin`/`origins`, koa-helmet and
+koa-ratelimit settings; implemented without new packages in `daemon/src/service/johnnykins/http_security.ts`.
+
+| Key | Default | Fork name | Meaning |
+|---|---|---|---|
+| `securityHeaders` | `true` | (helmet) | Sends `Content-Security-Policy: default-src 'none'; …; sandbox`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and drops `X-Power-by`. A downloaded HTML or SVG file opened in the browser runs nothing. The daemon's own information page gets a CSP that allows only its inline styles and its hash-pinned inline script. |
+| `cors` | `false` | `cors` | Off: upstream's `Access-Control-Allow-Origin: *`. On: only the origins in `origins` get a CORS header. |
+| `origins` | `[]` | `origin`, `origins` | Exact origins for `cors`, e.g. `["https://panel.example.com"]`. `*` is ignored. Must include the address users open the panel at, or uploads from the browser fail. |
+| `rateLimiter` | `false` | (koa-ratelimit, on) | Per-IP request limit. Over the limit the daemon answers `429`. Off by default because the fork's 20 requests per 10 s can cut off large uploads and busy panels. |
+| `rateLimitMax` | `120` | `max` (20) | Requests per window (1 to 100000). |
+| `rateLimitDurationMs` | `10000` | `duration` | Window length (1000 to 86400000 ms). |
+
+The limiter keys on the socket address; `X-Forwarded-For` is used only when the peer is listed in
+`johnnykins.ban.trustedProxies`. The fork keyed on client-supplied Cloudflare and forwarding headers, which let a
+client pick a new identity per request.
+
+## `johnnykins.pandorasWall`
+
+| Key | Default | Fork name | Meaning |
+|---|---|---|---|
+| `pandorasWall` | `false` | `pandoraswall` | After startup no code can add HTTP middleware to the daemon. The fork's version compared two `Symbol()` values, which never match, so it never engaged; this one freezes the middleware list. |
+
+## `johnnykins.runAs`
+
+Limits for "Run As" (start an instance as another OS account). Switching accounts needs the daemon to run as
+root on Linux or macOS. Full description: [features/run-as-user.md](../features/run-as-user.md); setup:
+[install-guide.md](../install-guide.md) method A.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `defaultUser` | `""` | Account for instances whose "Run As" is empty. `""` keeps upstream behaviour: they run as the daemon's own account, which is root on a root daemon (the daemon logs a warning). |
+| `allowedUsers` | `[]` | The only accounts "Run As" may name. Empty means any account except root. Shown as a list in the instance settings. |
+| `allowRoot` | `false` | Allow "Run As" to name root (uid 0). |
+
+Not used for Docker instances, where "Run As" sets the container user.

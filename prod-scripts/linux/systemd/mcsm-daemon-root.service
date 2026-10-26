@@ -1,0 +1,34 @@
+# MCSManager daemon as root, ONLY for hosts that need "Run As" (start each
+# instance as a different OS account). Install guide: docs/install-guide.md
+# (method A). Before enabling, set in /opt/mcsmanager/daemon/data/Config/global.json:
+#   "johnnykins": { "runAs": { "defaultUser": "mcsm-games", "allowedUsers": ["mcsm-games"], "allowRoot": false } }
+# so instances never run as root by accident.
+#   sudo cp mcsm-daemon-root.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now mcsm-daemon-root
+[Unit]
+Description=MCSManager Daemon (root, Run As enabled)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/mcsmanager/daemon
+ExecStart=/usr/bin/env node --max-old-space-size=8192 --enable-source-maps app.js
+Restart=on-failure
+RestartSec=5
+UMask=0077
+KillMode=mixed
+# NoNewPrivileges still lets root drop to another account (setuid/setgid
+# before exec); it only stops gaining privileges through setuid binaries.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

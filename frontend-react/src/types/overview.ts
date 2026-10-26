@@ -22,6 +22,16 @@ export interface OverviewRemote {
     enableSoftShutdown: boolean; softShutdownSkipDocker: boolean; softShutdownWaitSeconds: number;
   };
   dockerPlatforms?: string[];
+  /** "Run as" capability (daemon tools/system_user.ts). Missing on daemons older than this port. */
+  runAs?: NodeRunAsInfo;
+}
+
+export interface NodeRunAsInfo {
+  supported: boolean;
+  platform: string;
+  defaultUser: string;
+  allowedUsers: string[];
+  allowRoot: boolean;
 }
 
 export interface RemoteMapping {

@@ -5,10 +5,16 @@ import { globalConfiguration } from "../entity/config";
 import { uploadFileCheckMiddleware, uploadSpeedLimitMiddleware } from "../middlewares/precheck";
 import koaRouter from "../routers/http_router";
 import logger from "./log";
+import { daemonCorsAllowList, daemonRateLimiter, daemonSecurityHeaders } from "./johnnykins/http_security";
 
 export function initKoa() {
   const koaApp = new Koa();
   const config = globalConfiguration.config;
+  // Johnnykins HTTP hardening (service/johnnykins/http_security.ts). The
+  // limiter runs first so refused requests never reach the body parser.
+  koaApp.use(daemonRateLimiter());
+  koaApp.use(daemonSecurityHeaders());
+  koaApp.use(daemonCorsAllowList());
   koaApp.use(uploadSpeedLimitMiddleware);
   koaApp.use(uploadFileCheckMiddleware);
   koaApp.use(

@@ -10,6 +10,9 @@ const STATUS_OK = 200;
 const STATUS_ERR = 500;
 
 export enum ROLE {
+  // Panel Web Admin/Owner (Johnnykins fork). The panel forwards the caller's
+  // permission, so admin-only daemon tasks must accept it as well.
+  WEBADMIN = 20,
   ADMIN = 10,
   USER = 1,
   GUEST = 0,

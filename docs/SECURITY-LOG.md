@@ -2,6 +2,23 @@
 
 Entries follow the template in the project's secure development standards. Newest first.
 
+## 2026-10-26 - "Run As" limited to Web Admins and root daemons; daemon HTTP hardening
+- **Type:** hardening (new controls on an upstream feature, plus fork port)
+- **CVE / CWE / advisory:** none; CWE-250, CWE-269, CWE-88, CWE-78, CWE-79, CWE-770, CWE-348
+- **Severity:** not CVSS-scored; high by assessment for a root daemon without `defaultUser`, where any panel Admin who can edit a start command runs code as root.
+- **Affected:** `daemon/src/tools/system_user.ts`, `daemon/src/tools/file_ownership.ts`, `daemon/src/routers/Instance_router.ts`, `daemon/src/routers/info_router.ts`, `daemon/src/service/johnnykins/http_security.ts`, `daemon/src/service/http.ts`, `daemon/src/app.ts`, `panel/src/app/service/run_as_policy.ts`, `panel/src/app/routers/instance_admin_router.ts`, `frontend-react/src/widgets/instance/dialogs/InstanceDetail.tsx`.
+- **What changed:**
+  - Only a Web Admin/Owner can set `runAs`; for other callers the panel drops the key (NIST AC-5, AC-6). Market templates cannot carry one.
+  - The daemon switches accounts only as root, refuses root (uid 0) unless `allowRoot`, enforces `allowedUsers`, and runs instances without `runAs` as `defaultUser` when set. A root daemon without `defaultUser` warns at startup.
+  - Account lookup moved from `exec("id -u " + name)` to `execFile("id", ["-u", "--", name])` with a strict name pattern; upstream's filter allowed a leading `-` (CWE-88).
+  - Daemon HTTP: CSP `default-src 'none'; … sandbox`, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`; the information page gets a hash-pinned script CSP. Optional CORS allow-list and per-IP rate limiter keyed on the socket address (the fork keyed on spoofable headers, CWE-348). Optional PandorasWall middleware lock.
+- **Why it is secure now:** the OS account is a decision of the host's administrators only, root is never chosen by accident, and the daemon (not only the UI) enforces it (ASVS V4.1.1).
+- **Residual risk:**
+  - SECURITY-WARNING: a Web Admin on a root daemon can still reach root through the global terminal and global file manager. Documented in docs/install-guide.md.
+  - SECURITY-WARNING: membership of the `docker` group is root-equivalent; the install guide recommends rootless Docker for non-root daemons.
+  - The folder access hint ignores supplementary groups (may warn needlessly).
+- **Verification:** daemon tests (policy, name pattern, access hint, HTTP helpers), panel test (Web Admin only), UI test (field state); live on a root daemon: `root` refused with `allowRoot` off, `nobody` started; daemon page rendered with no CSP errors; systemd units pass `systemd-analyze verify`.
+
 ## 2026-10-25 - Session token out of URLs; SSO token no longer logged
 - **Type:** hardening
 - **CVE / CWE / advisory:** none; CWE-598, CWE-208, CWE-532

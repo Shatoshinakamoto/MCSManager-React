@@ -134,10 +134,44 @@ export class JohnnykinsDaemonConfig {
   sanitizer: SanitizerOptions = { ...DEFAULT_SANITIZER_OPTIONS };
 
   // Fork: instanceMasterConfig. Daemon-side switches the panel cannot override.
+  // The fork defaulted ptyAccess, openFrpAccess and docker to false; they are
+  // true here so upstream features keep working after an upgrade.
   instanceMasterConfig = {
     canSendCommands: true,
     canFileManager: true,
-    docker: true
+    docker: true,
+    // Pseudo-terminal (PTY) mode. Off = instances start in plain pipe mode.
+    ptyAccess: true,
+    // OpenFRP tunnels started by the daemon (downloads and runs frpc).
+    openFrpAccess: true,
+    // Minecraft status pings (player count, version, MOTD).
+    mcStatus: true
+  };
+
+  // Fork: daemon cors/origin/origins, koa-helmet and koa-ratelimit. See
+  // service/johnnykins/http_security.ts. The limiter is off by default because
+  // large uploads and busy panels can exceed the fork's 20 requests per 10 s.
+  http = {
+    securityHeaders: true,
+    cors: false,
+    origins: [] as string[],
+    rateLimiter: false,
+    rateLimitMax: 120,
+    rateLimitDurationMs: 10000
+  };
+
+  // Fork: pandoraswall. Locks the HTTP middleware list after startup.
+  pandorasWall = false;
+
+  // "Run as" limits (tools/system_user.ts, docs/features/run-as-user.md).
+  // Switching accounts needs the daemon to run as root.
+  runAs = {
+    // Account for instances whose runAs is empty. "" = the daemon's own account (upstream).
+    defaultUser: "",
+    // Accounts an instance may run as. Empty = any account except root.
+    allowedUsers: [] as string[],
+    // Allow runAs to name root (uid 0).
+    allowRoot: false
   };
 }
 

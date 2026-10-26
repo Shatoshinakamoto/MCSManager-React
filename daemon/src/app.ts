@@ -4,6 +4,8 @@ import https from "https";
 import { removeTrail, verifyIntegrityOrExit } from "mcsmanager-common";
 import path from "path";
 import { Server, Socket } from "socket.io";
+import { lockDaemonMiddlewareStack } from "./service/johnnykins/http_security";
+import { runAsPolicy, runAsSupported } from "./tools/system_user";
 import { GOLANG_ZIP_PATH, LOCAL_PRESET_LANG_PATH, PTY_PATH } from "./const";
 import { globalConfiguration } from "./entity/config";
 import { $t, i18next } from "./i18n";
@@ -63,6 +65,16 @@ logger.info($t("TXT_CODE_app.welcome"));
 
 // Initialize HTTP service
 const koaApp = koa.initKoa();
+lockDaemonMiddlewareStack(koaApp);
+
+// SECURITY-WARNING: a root daemon starts every instance without "Run As" as
+// root, so anyone who can edit a start command gets root on this host
+// (CWE-250). Point johnnykins.runAs.defaultUser at an unprivileged account.
+if (runAsSupported() && !runAsPolicy().defaultUser) {
+  logger.warn(
+    "[RunAs] This daemon runs as root and johnnykins.runAs.defaultUser is empty: instances without a Run As user run as root. See docs/install-guide.md."
+  );
+}
 
 // Listen for Koa errors
 koaApp.on("error", (error) => {

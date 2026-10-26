@@ -1,4 +1,5 @@
 import Instance from "../entity/instance/instance";
+import { runAsPolicy, runAsSupported } from "../tools/system_user";
 import * as protocol from "../service/protocol";
 import { routerApp } from "../service/router_app";
 import InstanceSubsystem from "../service/system_instance";
@@ -59,7 +60,18 @@ routerApp.on("info/overview", async (ctx) => {
       softShutdownSkipDocker: globalConfiguration.config.softShutdownSkipDocker,
       softShutdownWaitSeconds: globalConfiguration.config.softShutdownWaitSeconds
     },
-    dockerPlatforms
+    dockerPlatforms,
+    // "Run as" capability for the panel UI (tools/system_user.ts).
+    runAs: (() => {
+      const policy = runAsPolicy();
+      return {
+        supported: runAsSupported(),
+        platform: process.platform,
+        defaultUser: policy.defaultUser,
+        allowedUsers: policy.allowedUsers,
+        allowRoot: policy.allowRoot
+      };
+    })()
   };
   protocol.response(ctx, info);
 });

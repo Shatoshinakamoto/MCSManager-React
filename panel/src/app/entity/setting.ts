@@ -27,6 +27,27 @@ export class JohnnykinsPanelConfig {
     // Panel-side wait for a daemon's auth reply (upstream used 5000 ms).
     authTimeoutMs: 8000
   };
+  // Daemon connection timing (fork: remoteService.heartbeatInterval and
+  // remoteService.connectionTimeout). Defaults are upstream's values.
+  remoteService = {
+    // How often offline daemons are retried (fork default 30000).
+    heartbeatIntervalMs: 60000,
+    // Retry delay for finding the local daemon on first start (fork default 60000).
+    localDaemonRetryMs: 5000
+  };
+}
+
+/** Clamps for johnnykins.remoteService; shared by the settings API and the scheduler. */
+export const REMOTE_SERVICE_LIMITS = {
+  heartbeatIntervalMs: { min: 5000, max: 600000, fallback: 60000 },
+  localDaemonRetryMs: { min: 1000, max: 600000, fallback: 5000 }
+} as const;
+
+export function clampRemoteServiceMs(key: keyof typeof REMOTE_SERVICE_LIMITS, value: unknown) {
+  const l = REMOTE_SERVICE_LIMITS[key];
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n) || n <= 0) return l.fallback;
+  return Math.min(Math.max(n, l.min), l.max);
 }
 
 // Data-plane mode values. String-valued so the persisted JSON and HTTP API

@@ -17,6 +17,7 @@ import { timeUuid } from "../service/password";
 import { isHaveInstanceByUuid, isTopPermissionByUuid } from "../service/permission_service";
 import RemoteRequest, { INSTANCE_KILL_TIMEOUT } from "../service/remote_command";
 import RemoteServiceSubsystem from "../service/remote_service";
+import { applyRunAsPolicy } from "../service/run_as_policy";
 import userSystem from "../service/user_service";
 import { systemConfig } from "../setting";
 import GatewayToken from "../service/gateway_token";
@@ -58,6 +59,7 @@ router.post(
     try {
       const daemonId = String(ctx.query.daemonId);
       const config = ctx.request.body;
+      applyRunAsPolicy(ctx, config);
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
       const result = await new RemoteRequest(remoteService).request("instance/new", config);
       ctx.body = result;
@@ -84,6 +86,7 @@ router.post(
       const daemonId = String(ctx.query.daemonId);
       // const uploadDir = String(ctx.query.upload_dir);
       const config = ctx.request.body;
+      applyRunAsPolicy(ctx, config);
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
       if (!remoteService) throw new Error($t("TXT_CODE_dd559000") + ` Daemon ID: ${daemonId}`);
       const result = await new RemoteRequest(remoteService).request("instance/new", config);
@@ -146,6 +149,7 @@ router.put(
       const daemonId = String(ctx.query.daemonId);
       const instanceUuid = String(ctx.query.uuid);
       const config = ctx.request.body;
+      applyRunAsPolicy(ctx, config);
       const remoteService = RemoteServiceSubsystem.getInstance(daemonId);
       const result = await updateInstanceWithAudit(ctx, daemonId, instanceUuid, () =>
         new RemoteRequest(remoteService).request("instance/update", {

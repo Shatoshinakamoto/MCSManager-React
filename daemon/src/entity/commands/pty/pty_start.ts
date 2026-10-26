@@ -11,6 +11,7 @@ import { PTY_PATH } from "../../../const";
 import { $t } from "../../../i18n";
 import logger from "../../../service/log";
 import { getRunAsUserParams } from "../../../tools/system_user";
+import { globalConfiguration } from "../../config";
 import Instance from "../../instance/instance";
 import { IInstanceProcess } from "../../instance/interface";
 import { commandStringToArray } from "../base/command_parser";
@@ -155,7 +156,12 @@ export default class PtyStartCommand extends AbsStartCommand {
     logger.info($t("TXT_CODE_pty_start.startPty", { source: "" }));
     let checkPtyEnv = true;
 
-    if (!fs.existsSync(PTY_PATH)) {
+    // Johnnykins daemon-side gate (instanceMasterConfig.ptyAccess): start in
+    // plain pipe mode instead, the same fallback as a missing PTY binary.
+    if (globalConfiguration.config.johnnykins.instanceMasterConfig.ptyAccess === false) {
+      instance.println("INFO", "This daemon has disabled PTY mode (instanceMasterConfig.ptyAccess); starting without a PTY.");
+      checkPtyEnv = false;
+    } else if (!fs.existsSync(PTY_PATH)) {
       instance.println("ERROR", $t("TXT_CODE_pty_start.startErr"));
       checkPtyEnv = false;
     }

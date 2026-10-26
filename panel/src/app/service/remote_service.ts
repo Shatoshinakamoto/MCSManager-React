@@ -6,6 +6,8 @@ import RemoteService from "../entity/remote_service";
 import { $t } from "../i18n";
 import { UniversalRemoteSubsystem } from "./base/urs";
 import { logger } from "./log";
+import { systemConfig } from "../setting";
+import { clampRemoteServiceMs } from "../entity/setting";
 
 // The RemoteServiceSubsystem will be one of the most important systems
 // main function is to store remote services everywhere
@@ -32,8 +34,18 @@ class RemoteServiceSubsystem extends UniversalRemoteSubsystem<RemoteService> {
 
     logger.info($t("TXT_CODE_systemRemoteService.nodeCount", { n: this.services.size }));
 
-    // Register for periodic connection status checks
-    setInterval(() => this.connectionStatusCheckTask(), 1000 * 60);
+    // Periodic connection status checks. Rescheduled each round so a changed
+    // johnnykins.remoteService.heartbeatIntervalMs applies without a restart.
+    const scheduleCheck = () => {
+      setTimeout(() => {
+        try {
+          this.connectionStatusCheckTask();
+        } finally {
+          scheduleCheck();
+        }
+      }, clampRemoteServiceMs("heartbeatIntervalMs", systemConfig?.johnnykins?.remoteService?.heartbeatIntervalMs));
+    };
+    scheduleCheck();
   }
 
   // Register a NEW remote service to system and connect it.
@@ -108,10 +120,10 @@ class RemoteServiceSubsystem extends UniversalRemoteSubsystem<RemoteService> {
     }
     logger.warn($t("TXT_CODE_systemRemoteService.error"));
 
-    // After 5 seconds, determine whether the daemon has been connected until a daemon is connected
+    // Retry until a daemon is connected (johnnykins.remoteService.localDaemonRetryMs, default 5 s).
     setTimeout(() => {
       if (this.services.size === 0) return this.initConnectLocalhost();
-    }, 5 * 1000);
+    }, clampRemoteServiceMs("localDaemonRetryMs", systemConfig?.johnnykins?.remoteService?.localDaemonRetryMs));
   }
 
   count() {

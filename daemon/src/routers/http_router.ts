@@ -15,6 +15,7 @@ import {
   syncInstancePathOwnership
 } from "../tools/file_ownership";
 import { sendFile } from "../utils/speed_limit";
+import { pageCspFor } from "../service/johnnykins/http_security";
 
 const router = new Router();
 
@@ -26,7 +27,10 @@ function queryBoolean(value: unknown): boolean {
 }
 
 // Define the HTTP home page display route
+const DAEMON_INDEX_CSP = pageCspFor(DAEMON_INDEX_HTML);
+
 router.all("/", async (ctx) => {
+  ctx.state.daemonCsp = DAEMON_INDEX_CSP;
   ctx.body = DAEMON_INDEX_HTML;
   ctx.status = 200;
 });

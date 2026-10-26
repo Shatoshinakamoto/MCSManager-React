@@ -44,8 +44,15 @@ Base: upstream MCSManager commit `ad4f903` (2026-10-24, panel 10.22.0, daemon 4.
 - React UI Phase 5 parity: the business-mode renewal-code dialog on the terminal page (`components/fc/RenewalDialog.tsx`, `services/apis/redeem.ts`); the "fill in the card first" notice for failing previews in the new-card dialog; the manual-copy dialog when the clipboard is unavailable; the "instance has a configuration issue" notice in instance settings instead of a crash. Themed `modal` in `tools/antdStatic.ts`. 4 tests.
 - Browser tests: `frontend-react/e2e/` (Playwright 1.63.0, pinned) with security specs (CSP, plugin host sandbox, no sourcemaps) and smoke specs (login, every main page, design mode); `npm run test:e2e`. CI job `.github/workflows/e2e.yml` runs them on a fresh panel. ([docs](commands/frontend-react.md))
 - [Upgrade guide](upgrade-guide.md) for moving from upstream or the Johnnykins fork.
+- "Run As" rules: only a Web Admin/Owner can set an instance's OS account; the daemon needs root to switch accounts and refuses with a clear message otherwise; new daemon settings `johnnykins.runAs.defaultUser`, `allowedUsers`, `allowRoot`; the instance settings lock the field with the reason, or show the allowed accounts as a list; the console hints at the `chown` command when the account cannot open the instance folder. ([docs](features/run-as-user.md))
+- [Install guide](install-guide.md) for root, service-account, own-account, Windows and Docker setups, and systemd unit templates in `prod-scripts/linux/systemd/`.
+- From the Johnnykins fork (second audit): daemon switches `instanceMasterConfig.ptyAccess`, `openFrpAccess`, `mcStatus`; daemon HTTP hardening `johnnykins.http` (security headers, CORS allow-list, rate limiter) and `johnnykins.pandorasWall`; panel `johnnykins.remoteService.heartbeatIntervalMs` and `localDaemonRetryMs`, editable in Settings > Daemon Passport. ([daemon](configuration/daemon-johnnykins.md), [panel](configuration/panel-johnnykins.md))
+- Daemon `info/overview` reports `runAs` (whether it can switch accounts, and its account limits).
+- Tests: 7 daemon and 4 panel tests for "Run As", 5 for the daemon HTTP hardening, 4 for the UI field.
 
 ### Changed
+- A root daemon logs a warning at startup while `johnnykins.runAs.defaultUser` is empty.
+- "Run As" can no longer name root unless `johnnykins.runAs.allowRoot` is on, and market templates can no longer set it.
 - React UI loads each card's code on demand (`React.lazy` with a skeleton placeholder). The login page now loads about 1.65 MB of script instead of about 5.5 MB.
 - The React UI sends the session token in the `X-MCSM-Token` header instead of `?token=`. The panel reads the header first and still accepts the query parameter for existing scripts.
 - **Cutover to the React UI.** `build.sh`, `build.bat`, `install-dependents.*`, the root npm scripts (`npm run dev`, `npm run frontend`, `npm test`) and the CI test workflow now build, install and test `frontend-react/`; Docker images pick this up through `build.sh`. The Vue `frontend/` stays in the tree as the upstream porting reference only (`npm run frontend:vue`).
@@ -60,11 +67,14 @@ Base: upstream MCSManager commit `ad4f903` (2026-10-24, panel 10.22.0, daemon 4.
 - Panel CSP: the `'unsafe-eval'` fallback for frontends without the `mcsm-csp` strict marker. A non-React `index.html` now only logs a startup warning.
 
 ### Fixed
+- Daemon: a Web Admin (permission 20) could not use the Minecraft quick install or reinstall from the market, because the daemon only accepted permission 10 for those tasks.
 - React UI: right after login, the login animation's delayed redirect could pull the user back to the dashboard after they had already opened another page. Found by the new browser tests. Same fix on the SSO bind page.
 - React Settings: leaving the page navigated straight back to it (the `?tab=` cleanup ran against the old route).
 - Intermittent daemon connection failures from the fork's auth: passport list overwrite and eviction, passport types 1-3 never verifying, daemon locking itself after a failed sync, missing verification timeout, ban DB startup race. Details in [features/passport-auth.md](features/passport-auth.md#why-connections-sometimes-failed-in-the-fork).
 
 ### Security
+- "Run As" account names are looked up with `execFile` and `--`; a name starting with `-` could be read as an option of `id` (CWE-88).
+- Daemon HTTP responses carry a sandboxing CSP and `nosniff`, so downloaded files never run in the browser (CWE-79).
 - Session token moved out of URLs into the `X-MCSM-Token` header (CWE-598); the panel compares tokens in constant time (CWE-208).
 - Panel no longer logs the one-time SSO login token (`instance_exchange_router.ts`) (CWE-532).
 - Panel no longer logs the session token on login (CWE-532).

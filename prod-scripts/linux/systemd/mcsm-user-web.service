@@ -1,0 +1,21 @@
+# MCSManager web for one ordinary account, with no admin rights at run time
+# (systemd user service). Install guide: docs/install-guide.md (method C).
+#   mkdir -p ~/.config/systemd/user && cp mcsm-user-web.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now mcsm-user-web
+# To keep it running after you log out, an administrator runs once:
+#   sudo loginctl enable-linger <your-account>
+[Unit]
+Description=MCSManager web (user service)
+
+[Service]
+Type=simple
+WorkingDirectory=%h/mcsmanager/web
+ExecStart=/usr/bin/env node --max-old-space-size=4096 app.js
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=yes
+
+
+[Install]
+WantedBy=default.target

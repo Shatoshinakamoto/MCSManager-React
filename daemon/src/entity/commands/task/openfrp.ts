@@ -8,6 +8,7 @@ import { $t } from "../../../i18n";
 import { ProcessWrapper } from "mcsmanager-common";
 import { FRPC_PATH } from "../../../const";
 import { downloadFileToLocalFile } from "../../../service/download";
+import { globalConfiguration } from "../../config";
 export class OpenFrp {
   public processWrapper?: ProcessWrapper;
 
@@ -52,6 +53,11 @@ export default class OpenFrpTask implements ILifeCycleTask {
   async start(instance: Instance) {
     const { openFrpToken, openFrpTunnelId } = instance.config?.extraServiceConfig;
     if (!openFrpToken || !openFrpTunnelId) return;
+    // Johnnykins daemon-side gate: never download or run frpc when disabled.
+    if (globalConfiguration.config.johnnykins.instanceMasterConfig.openFrpAccess === false) {
+      instance.println("FRP", "This daemon has disabled OpenFRP tunnels (instanceMasterConfig.openFrpAccess).");
+      return;
+    }
 
     if (!fs.existsSync(OpenFrpTask.FRP_EXE_PATH)) {
       const tmpTask = setInterval(() => {
