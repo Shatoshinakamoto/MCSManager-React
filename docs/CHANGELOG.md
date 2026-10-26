@@ -70,6 +70,7 @@ Base: upstream MCSManager commit `ad4f903` (2026-10-24, panel 10.22.0, daemon 4.
 - Panel CSP: the `'unsafe-eval'` fallback for frontends without the `mcsm-csp` strict marker. A non-React `index.html` now only logs a startup warning.
 
 ### Fixed
+- `install-dependents.sh` now downloads the daemon's helper programs into `daemon/lib/` like `install-dependents.bat` does (upstream's Linux script never did), for Linux and macOS on any architecture upstream publishes, plus the 7-Zip licence files. Both scripts now stop on HTTP errors instead of saving the error page as a program. ([docs](commands/frontend-react.md#root-scripts-repository-root))
 - Downloads and bundles were missing `frontend-react/src/widgets/logs/` (the operation-log card), so `npm run dev` and the build failed with `Failed to resolve import "@/widgets/logs/OperationLogCard"`. The root `.gitignore` rule `logs` matched the source folder; it is now excluded from that rule. Releases are now checked by building a clean `git archive` copy.
 - React UI: deprecated antd 6 props (`Timeline` `items.children`, `Space` `direction`, `Alert` `message`) replaced, which removes the dev-server console warnings.
 - Browser tests: the login helper waited only for the URL to leave `/login`, then raced the `/` to `/instances` redirect on the slower dev server. The panel header checks now skip on the Vite dev server, which does not send them.

@@ -36,4 +36,5 @@ Exit codes: 0 on success, non-zero on type, test or build failure.
 | `npm run frontend` | React UI dev server only |
 | `npm run frontend:vue` | Upstream Vue UI dev server, for side-by-side parity checks only |
 | `npm test` | Panel, daemon and React UI unit tests |
+| `./install-dependents.sh` / `install-dependents.bat` | `npm install` in every package, then downloads the daemon's helper programs (terminal `pty_*`, zip `file_zip_*`, `7z_*` with its licence files) for this machine into `daemon/lib/`. The Linux/macOS script picks the files by Node's platform and architecture, uses HTTPS only, keeps going with a warning when a file is not published for your machine, and skips the downloads with `MCSM_SKIP_LIBS=1`. Run it as your own account, not with sudo. |
 | `./build.sh` / `build.bat` | Production build into `production-code/`; the React UI goes to `web/public/`, its sourcemaps to `frontend-sourcemaps/` |
