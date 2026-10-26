@@ -28,7 +28,7 @@ jobs:
             common/package-lock.json
             daemon/package-lock.json
             panel/package-lock.json
-            frontend/package-lock.json
+            frontend-react/package-lock.json
 
       - name: Install dependencies and build common
         run: |
@@ -55,9 +55,9 @@ jobs:
         run: npm test
         working-directory: panel
 
-      - name: Unit tests - frontend
+      - name: Unit tests - frontend (React UI)
         run: npm test
-        working-directory: frontend
+        working-directory: frontend-react
 
       - name: Build panel and daemon (integration prerequisite)
         run: |

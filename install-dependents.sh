@@ -6,7 +6,7 @@ cd daemon
 npm install
 cd ../panel
 npm install
-cd ../frontend
+cd ../frontend-react
 npm install
 
 echo "------------"

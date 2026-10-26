@@ -5,7 +5,7 @@
  */
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import type { HookAPI } from "antd/es/modal/useModal";
-import { message } from "antd";
+import { message } from "@/tools/antdStatic";
 import { GLOBAL_INSTANCE_NAME } from "@/config/const";
 import { reportErrorMsg } from "@/tools/validator";
 import { t } from "@/lang/i18n";
@@ -158,7 +158,7 @@ export async function verifyEULA(instanceId: string, daemonId: string, modal: Ho
       title: t("TXT_CODE_617ce69c"),
       content,
       okText: t("TXT_CODE_e456aed"),
-      maskClosable: false,
+      mask: { closable: false },
       onOk: async () => {
         try {
           await updateConfigFile({ params, data: { eula: true } });

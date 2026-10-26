@@ -38,6 +38,15 @@ describe("resolveNavigation (route guard)", () => {
     expect(resolveNavigation("/", { ...base, user: user(ROLE.USER) })).toBe("/customer");
   });
   it("404s unknown paths", () => expect(resolveNavigation("/nope", { ...base, user: user(ROLE.ADMIN) })).toBe("/404"));
+  it("treats Web Admins as admins", () => expect(resolveNavigation("/", { ...base, user: user(ROLE.WEBADMIN) })).toBe("/instances"));
+  it("keeps plain admins off Web Admin pages once enforced", () => {
+    expect(resolveNavigation("/settings", { ...base, user: user(ROLE.ADMIN), webAdminEnforced: true })).toBe("/404");
+    expect(resolveNavigation("/node/image", { ...base, user: user(ROLE.ADMIN), webAdminEnforced: true })).toBe("/404");
+    expect(resolveNavigation("/instances", { ...base, user: user(ROLE.ADMIN), webAdminEnforced: true })).toBeNull();
+    expect(resolveNavigation("/settings", { ...base, user: user(ROLE.WEBADMIN), webAdminEnforced: true })).toBeNull();
+    expect(resolveNavigation("/settings", { ...base, user: user(ROLE.ADMIN), webAdminEnforced: false })).toBeNull();
+  });
+  it("keeps banned users out", () => expect(resolveNavigation("/instances", { ...base, user: user(ROLE.BAN) })).toBe("/customer"));
 });
 
 describe("parseLayoutConfig (CWE-20)", () => {

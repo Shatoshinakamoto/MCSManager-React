@@ -15,3 +15,17 @@
   align-items: center;
   justify-content: center;
 }
+
+/* antd 6 line tabs are 53px tall; ant-design-vue 4's are 46px (seen on the
+   phone-width Settings tabs). Same rule the mod manager already scoped. */
+.ant-tabs:not(.ant-tabs-card) > .ant-tabs-nav .ant-tabs-tab {
+  padding: 12px 0;
+  line-height: 22px;
+}
+
+/* With componentSize="large", antd 6 gives vertical form labels the 40px
+   control height; ant-design-vue 4 leaves them at their 22px line height
+   (seen in the market's template-name dialog). */
+.ant-form.ant-form-vertical .ant-form-item .ant-form-item-label > label {
+  height: auto;
+}

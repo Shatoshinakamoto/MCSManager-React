@@ -13,7 +13,7 @@ const router = new Router({ prefix: "/environment" });
 // Get the specified remote service mirror list
 router.get(
   "/image",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { daemonId: String } }),
   async (ctx) => {
     try {
@@ -31,7 +31,7 @@ router.get(
 // create image
 router.post(
   "/image",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { daemonId: String } }),
   async (ctx) => {
     try {
@@ -53,7 +53,7 @@ router.post(
 // delete the specified image
 router.delete(
   "/image",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { daemonId: String, imageId: String } }),
   async (ctx) => {
     try {
@@ -74,7 +74,7 @@ router.delete(
 // Get the list of existing containers of the specified remote service
 router.get(
   "/containers",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { daemonId: String } }),
   async (ctx) => {
     try {
@@ -92,7 +92,7 @@ router.get(
 // Get the list of existing networks for the specified remote service
 router.get(
   "/networkModes",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { daemonId: String } }),
   async (ctx) => {
     try {
@@ -110,7 +110,7 @@ router.get(
 // Get the image creation progress of the specified remote service
 router.get(
   "/progress",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { daemonId: String } }),
   async (ctx) => {
     try {
@@ -128,7 +128,7 @@ router.get(
 // Get supported platforms for a Docker image (via daemon)
 router.post(
   "/image_platforms",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { daemonId: String } }),
   async (ctx) => {
     try {
@@ -151,7 +151,7 @@ router.post(
 
 // [Top-level Permission]
 // Get supported platforms for a Docker image from Docker Hub or custom registry (proxy endpoint to avoid CORS)
-router.post("/dockerhub_image_platforms", permission({ level: ROLE.ADMIN }), async (ctx) => {
+router.post("/dockerhub_image_platforms", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
   try {
     const { imageName } = ctx.request.body as { imageName: string };
     if (!imageName) {

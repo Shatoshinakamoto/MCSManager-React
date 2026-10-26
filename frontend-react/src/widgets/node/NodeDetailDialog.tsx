@@ -5,7 +5,8 @@
  * SECURITY: the daemon key field is never pre-filled when editing (the panel
  * doesn't return it); leaving it empty keeps the stored key.
  */
-import { Button, Card, Col, Form, Input, Modal, Popconfirm, Row, Select, Switch, Tabs, Tooltip, Typography, message } from "antd";
+import { Button, Card, Col, Form, Input, Modal, Popconfirm, Row, Select, Switch, Tabs, Tooltip, Typography } from "antd";
+import { message } from "@/tools/antdStatic";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { addNode, deleteNode, updateNode } from "@/hooks/useRemoteNode";
 import { t } from "@/lang/i18n";

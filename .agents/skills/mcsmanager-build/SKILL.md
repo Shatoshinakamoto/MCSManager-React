@@ -1,6 +1,6 @@
 ---
 name: mcsmanager-build
-description: Build/compile/package/production-deploy skill for the MCSManager project. Use when the user says keywords such as build、compile、package、production build, deploy production-code, etc., or asks to produce/run a production-code production build. Covers the BUNDLE=1 build pipeline (common → daemon/panel/frontend), production-code layout, deploy & run (web 23333 / daemon 24444), paired data migration, sensitive files, and post-deploy verification. Use ONLY for MCSManager build/deploy/run tasks.
+description: Build/compile/package/production-deploy skill for the MCSManager project. Use when the user says keywords such as build、compile、package、production build, deploy production-code, etc., or asks to produce/run a production-code production build. Covers the BUNDLE=1 build pipeline (common → daemon/panel/frontend-react), production-code layout, deploy & run (web 23333 / daemon 24444), paired data migration, sensitive files, and post-deploy verification. Use ONLY for MCSManager build/deploy/run tasks.
 ---
 
 # MCSManager Build & Production Deployment
@@ -17,7 +17,7 @@ description: Build/compile/package/production-deploy skill for the MCSManager pr
 1. **`BUNDLE=1` (the key switch)**: passed to panel/daemon's webpack, it inlines the entire npm dependency tree + all language packs (static `@languages` imports) into a **single self-contained `app.js`**. The artifact runs with bare `node`, **no `npm install` needed at runtime**. Mechanism: `panel/webpack.config.js`, `daemon/webpack.config.js`.
 2. **`npm run preview-build`** (misleading name): it is actually `cd common && npm install && npm run build` (tsc → `common/dist/`). panel/daemon compile `common/src` source directly via tsconfig `paths` + webpack `resolve.alias`, so **after changing `common/` you must rebuild panel and daemon**.
 3. Clean old artifacts: `production-code/`, `daemon/{dist,production}`, `panel/{dist,production}`.
-4. Build the three ends: `daemon` webpack → `daemon/production/app.js`; `panel` webpack → `panel/production/app.js`; `frontend` = `vue-tsc` type check + vite → `frontend/dist/` (type errors abort the build).
+4. Build the three ends: `daemon` webpack → `daemon/production/app.js`; `panel` webpack → `panel/production/app.js`; `frontend-react` = `tsc --noEmit` type check + vite → `frontend-react/dist/` (type errors abort the build). The Vue `frontend/` is no longer built; it stays only as the upstream reference for porting.
 5. Assemble artifacts into `production-code/` (layout see §2), clean up intermediate directories.
 6. If `daemon/lib/` exists, copy it into the artifacts as-is — platform binaries are **not bundled** (see §3).
 
@@ -36,7 +36,8 @@ production-code/
 └── web/                         # Panel process (runs app.js with cwd = this directory)
     ├── app.js / app.js.map
     ├── package.json / package-lock.json
-    └── public/                  # frontend static assets (frontend/dist)
+    └── public/                  # React UI static assets (frontend-react/dist, without *.map)
+└── frontend-sourcemaps/         # UI sourcemaps, kept out of the web root (do not deploy to public/)
 ```
 
 At runtime the two processes each create `data/` (persistence) and `logs/` (logs) under their cwd.
@@ -58,18 +59,20 @@ Under `BUNDLE=1`, webpack marks `.node` native acceleration modules (ssh2's `ssh
 cd common; npm install; npm run build
 
 # 2) Clean (back up data/ first if production-code exists)
-Remove-Item -Recurse -Force production-code, daemon\dist, daemon\production, panel\dist, panel\production, frontend\dist
+Remove-Item -Recurse -Force production-code, daemon\dist, daemon\production, panel\dist, panel\production, frontend-react\dist
 
 # 3) Build the three ends (daemon/panel must have BUNDLE=1; can run in parallel in different terminals)
 cd ..\daemon;    $env:BUNDLE='1'; npm run build
 cd ..\panel;     $env:BUNDLE='1'; npm run build
-cd ..\frontend;  npm run build
+cd ..\frontend-react;  npm run build
 
 # 4) Assemble (in the repo root)
 New-Item -ItemType Directory -Force production-code\daemon, production-code\web, production-code\web\public
-Copy-Item daemon\production\app.js, daemon\production\app.js.map, daemon\package.json, daemon\package-lock.json -Destination production-code\daemon\
-Copy-Item panel\production\app.js, panel\production\app.js.map, panel\package.json, panel\package-lock.json -Destination production-code\web\
-Copy-Item frontend\dist\* -Destination production-code\web\public\ -Recurse
+Copy-Item daemon\production\app.js, daemon\production\app.js.map, daemon\production\app-hash.txt, daemon\production\app_map-hash.txt, daemon\package.json, daemon\package-lock.json -Destination production-code\daemon\
+Copy-Item panel\production\app.js, panel\production\app.js.map, panel\production\app-hash.txt, panel\production\app_map-hash.txt, panel\package.json, panel\package-lock.json -Destination production-code\web\
+New-Item -ItemType Directory -Force production-code\frontend-sourcemaps
+Move-Item frontend-react\dist\assets\*.map -Destination production-code\frontend-sourcemaps\
+Copy-Item frontend-react\dist\* -Destination production-code\web\public\ -Recurse
 Copy-Item daemon\lib -Destination production-code\daemon\lib -Recurse   # copy only if it exists
 ```
 

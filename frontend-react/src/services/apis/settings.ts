@@ -24,6 +24,18 @@ export interface Settings {
   forwardType: number;
   dataPlane: DataPlaneMode;
   crossDomain: boolean;
+  // Additional Security (docs/configuration/panel-additional-security.md)
+  cors?: boolean;
+  origin?: string;
+  helmet?: boolean;
+  rateLimiter?: boolean;
+  rateLimitMax?: number;
+  rateLimitDuration?: number;
+  daemonServerIDs?: string[];
+  pandorasWall?: boolean;
+  devBlocker?: boolean;
+  webAdminEnforced?: boolean;
+  sessionMaxAgeMinutes?: number;
   gzip: boolean;
   maxCompress: number;
   maxDownload: number;

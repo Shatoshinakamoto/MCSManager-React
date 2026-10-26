@@ -1,6 +1,8 @@
+import crypto from "crypto";
 import Koa from "koa";
 import { GlobalVariable } from "mcsmanager-common";
 import { ROLE } from "../entity/user";
+import { effectiveLevel } from "../service/web_admin";
 import { $t } from "../i18n";
 import { getUuidByApiKey, ILLEGAL_ACCESS_KEY, isAjax, logout } from "../service/passport_service";
 import userSystem from "../service/user_service";
@@ -67,6 +69,8 @@ interface IPermissionCfg {
 // Basic user permission middleware
 export default (parameter: IPermissionCfg) => {
   return async (ctx: Koa.ParameterizedContext, next: Function) => {
+    // Web Admin routes fall back to Admin until enforcement is on (service/web_admin.ts).
+    const level = parameter.level == null ? parameter.level : effectiveLevel(Number(parameter.level));
     // Unsafe integration-test mode bypass: when the panel is started with
     // `--Unsafe-Integration-Test-Mode=<key>` (parameter name case-insensitive)
     // and the request carries an `x-request-api-key` header equal to `<key>`,
@@ -101,7 +105,7 @@ export default (parameter: IPermissionCfg) => {
       const user = getUuidByApiKey(apiKey);
       if (user && enableApiKey === "ONLY_ADMIN" && user.permission < ROLE.ADMIN)
         return disabledApiKey(ctx);
-      if (user && user.permission >= Number(parameter.level)) {
+      if (user && user.permission >= Number(level)) {
         return await next();
       } else {
         return apiError(ctx);
@@ -111,9 +115,11 @@ export default (parameter: IPermissionCfg) => {
     // If the route requires Token verification, it will be verified, the default is automatic verification
     if (parameter.token !== false) {
       if (!isAjax(ctx)) return ajaxError(ctx);
-      const requestToken = ctx.query.token;
+      // SECURITY: the React UI sends the anti-CSRF token in the X-MCSM-Token
+      // header so it stays out of URLs, proxy logs and Referer (CWE-598).
+      // The ?token= query parameter is still accepted for older clients.
       const realToken = ctx.session?.["token"];
-      if (requestToken !== realToken) {
+      if (!sessionTokenMatches(readRequestToken(ctx), realToken)) {
         return tokenError(ctx);
       }
     }
@@ -130,7 +136,7 @@ export default (parameter: IPermissionCfg) => {
         }
 
         // Judgment of permissions for ordinary users and administrative users
-        if (user && user.permission >= Number(parameter.level)) {
+        if (user && user.permission >= Number(level)) {
           return await next();
         }
       }
@@ -144,3 +150,23 @@ export default (parameter: IPermissionCfg) => {
     return verificationFailed(ctx);
   };
 };
+
+/** Session anti-CSRF token from the X-MCSM-Token header, else from ?token=. */
+export function readRequestToken(ctx: Koa.ParameterizedContext): string | undefined {
+  const header = ctx.get("x-mcsm-token");
+  if (header) return header;
+  const q = ctx.query.token;
+  return typeof q === "string" ? q : undefined;
+}
+
+/**
+ * Constant-time comparison of the request token with the session token
+ * (CWE-208). Missing tokens never match, so a session without a token
+ * cannot be satisfied by sending no token either.
+ */
+export function sessionTokenMatches(requestToken: unknown, realToken: unknown): boolean {
+  if (typeof requestToken !== "string" || typeof realToken !== "string" || !realToken) return false;
+  const a = Buffer.from(requestToken);
+  const b = Buffer.from(realToken);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}

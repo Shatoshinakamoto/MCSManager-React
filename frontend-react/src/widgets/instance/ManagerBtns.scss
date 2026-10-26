@@ -1,0 +1,13 @@
+/* Port of the scoped styles in widgets/instance/ManagerBtns.vue. */
+.function-btns-container {
+  position: absolute;
+  inset: 0;
+}
+
+@media (max-width: 1000px) {
+  .function-btns-container {
+    position: relative;
+    height: auto;
+    min-height: 100%;
+  }
+}

@@ -1,0 +1,66 @@
+/* Port of NodeSelectDialog.vue scoped styles. */
+.node-select-container {
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 4px;
+
+  .node-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .node-item {
+    cursor: pointer;
+    padding: 12px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    background-color: var(--color-gray-2);
+    border: 1px solid var(--color-gray-3);
+
+    &:hover {
+      background-color: var(--color-gray-4);
+      border-color: var(--color-gray-5);
+    }
+
+    &.node-unsupported {
+      border-color: var(--color-warning);
+      background-color: var(--color-warning-bg, rgba(255, 193, 7, 0.1));
+    }
+
+    .node-content {
+      .node-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+
+        .node-name {
+          font-weight: 600;
+          color: var(--color-gray-10);
+          flex: 1;
+          margin-right: 8px;
+        }
+
+        .node-tags {
+          display: flex;
+          gap: 4px;
+          align-items: center;
+        }
+      }
+
+      .node-details {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        color: var(--color-gray-8);
+        font-size: 12px;
+
+        .node-warning-text {
+          color: var(--color-warning, #faad14);
+          font-weight: 500;
+        }
+      }
+    }
+  }
+}

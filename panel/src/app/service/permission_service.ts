@@ -1,5 +1,5 @@
 import userSystem from "./user_service";
-import { User } from "../entity/user";
+import { ROLE, User } from "../entity/user";
 
 export function isHaveInstance(user: User, daemonId: string, instanceUuid: string) {
   if (isTopPermission(user)) return true;
@@ -13,7 +13,8 @@ export function isHaveInstance(user: User, daemonId: string, instanceUuid: strin
 
 export function isTopPermission(user: User) {
   if (!user) return false;
-  return user.permission >= 10;
+  // Admin (10) and Web Admin (20) both see every instance.
+  return user.permission >= ROLE.ADMIN;
 }
 
 export function isTopPermissionByUuid(uuid: string) {

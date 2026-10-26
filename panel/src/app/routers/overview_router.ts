@@ -14,8 +14,19 @@ import RemoteRequest from "../service/remote_command";
 import RemoteServiceSubsystem from "../service/remote_service";
 import VisualDataSubsystem from "../service/visual_data";
 import { getVersion, specifiedDaemonVersion } from "../version";
+import { systemConfig } from "../setting";
 
 const router = new Router({ prefix: "/overview" });
+
+// [Public Permission]
+// Fork-compatible switch for the frontend dev-tools blocker. Returns only a boolean.
+router.get(
+  "/systemconfig",
+  permission({ token: false, level: null }),
+  async (ctx) => {
+    ctx.body = { result: Boolean(systemConfig?.devBlocker) };
+  }
+);
 
 // [Top-level Permission]
 // Control panel home page information overview routing

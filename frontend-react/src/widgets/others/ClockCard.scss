@@ -1,0 +1,47 @@
+/* Copied from upstream ClockCard.vue, time/Style1.vue and time/Style2.vue (less -> scss). */
+.ClockCard {
+  .value {
+    font-weight: bolder;
+  }
+  .time-wrapper {
+    --size: 60px;
+
+    .time {
+      .date {
+        font-size: 12px;
+        opacity: 0.76;
+      }
+      .time-container {
+        height: var(--size);
+        overflow: hidden;
+        display: flex;
+        font-size: var(--size);
+        align-items: flex-start;
+
+        .h,
+        .m,
+        .s {
+          font-weight: 600;
+          display: flex;
+          margin: 0 6px;
+          align-items: flex-start;
+
+          .left,
+          .right {
+            display: flex;
+            align-items: flex-start;
+            flex-direction: column;
+            transition: all 0.8s;
+            transform: translateY(calc(var(--n) * -60px));
+            span {
+              height: var(--size);
+            }
+          }
+        }
+        .second-item {
+          opacity: 0.8;
+        }
+      }
+    }
+  }
+}

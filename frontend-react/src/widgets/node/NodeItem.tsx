@@ -7,7 +7,8 @@ import {
   BlockOutlined, CheckCircleOutlined, CloudServerOutlined, CloudUploadOutlined, CodeOutlined,
   FolderOpenOutlined, InfoCircleOutlined, ReloadOutlined, SettingOutlined
 } from "@ant-design/icons";
-import { Col, Modal, Row, Tooltip, Typography, message } from "antd";
+import { Col, Modal, Row, Tooltip, Typography } from "antd";
+import { message } from "@/tools/antdStatic";
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import CardPanel from "@/components/CardPanel";
 import IconBtn from "@/components/IconBtn";

@@ -25,7 +25,8 @@ export async function middleware(
     ctx.body = error;
   }
 
-  if (systemConfig?.crossDomain) {
+  // The CORS allow-list (additional_security.ts) replaces the wildcard when on.
+  if (systemConfig?.crossDomain && !systemConfig?.cors) {
     ctx.response.set("Access-Control-Allow-Origin", "*");
     ctx.response.set("Access-Control-Allow-Methods", "PUT, POST, GET, DELETE, OPTIONS");
     ctx.response.set(

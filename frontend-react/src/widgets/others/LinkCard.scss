@@ -1,0 +1,19 @@
+/* Copied from upstream LinkCard.vue scoped styles. */
+.LinkCard.button {
+  position: relative;
+  .delete-button {
+    cursor: pointer;
+    z-index: 9;
+    position: absolute;
+    right: 15px;
+    padding: 3px;
+    top: calc(50% - 13px);
+    scale: 1.2;
+    transition: all 0.5s;
+
+    &:hover {
+      scale: 1.3;
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+  }
+}

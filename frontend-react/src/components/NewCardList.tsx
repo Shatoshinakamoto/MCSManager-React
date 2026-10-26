@@ -10,7 +10,8 @@
 import { AppstoreOutlined, BulbOutlined } from "@ant-design/icons";
 import { Alert, Button, Col, Drawer, Form, Input, Radio, Row, Tag, Typography } from "antd";
 import { useMemo, useState } from "react";
-import { useLocation } from "react-router";
+import { useLocation, useNavigate } from "react-router";
+import { openSelectInstances } from "@/components/fc/SelectInstances";
 import LayoutCard from "@/components/LayoutCard";
 import { getLayoutCardPool, NEW_CARD_TYPE, type NewCardItem } from "@/config/cardPool";
 import { findRoute } from "@/config/routes";
@@ -25,11 +26,13 @@ const ID_VALUE = /^[A-Za-z0-9_-]{1,128}$/;
 
 export default function NewCardList() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { showNewCardDialog, setShowNewCardDialog } = useLayoutContainer();
   const insertItem = useLayoutConfig((s) => s.insertItem);
   const [category, setCategory] = useState(NEW_CARD_TYPE.COMMON);
   const [paramsCard, setParamsCard] = useState<NewCardItem | null>(null);
   const [form] = Form.useForm<Record<string, string>>();
+  const [pickedName, setPickedName] = useState("");
   const pageRole = findRoute(pathname)?.meta.permission ?? ROLE.GUEST;
 
   const pool = useMemo(
@@ -48,10 +51,18 @@ export default function NewCardList() {
     if (card.permission > pageRole) return reportErrorMsg(t("TXT_CODE_fb4cb9cb"));
     if (card.params) {
       form.resetFields();
+      setPickedName("");
       setParamsCard(card);
       return;
     }
     insert(card);
+  };
+
+  const pickInstance = async () => {
+    const picked = await openSelectInstances([], () => navigate("/node"));
+    if (!picked?.length) return;
+    form.setFieldsValue({ instanceId: picked[0].instanceUuid, daemonId: picked[0].daemonId });
+    setPickedName(String(picked[0].nickname ?? picked[0].instanceUuid));
   };
 
   const submitParams = async () => {
@@ -116,15 +127,33 @@ export default function NewCardList() {
           <div className="app-max-width">
             <Form form={form} layout="vertical" autoComplete="off">
               <Row gutter={[20, 20]}>
-                {/* TODO(port, phase 2): "instance" params open the instance picker dialog. */}
-                {paramsCard.params?.filter((p) => p.type === "string").map((p) => (
+                {paramsCard.params?.map((p) => (
                   <Col key={p.field} span={24} md={12}>
-                    {/* SECURITY: ids are allow-listed characters only (CWE-20). */}
-                    <Form.Item label={p.label} name={p.field} rules={[{ pattern: ID_VALUE, message: p.label }]}>
-                      <Input />
-                    </Form.Item>
+                    {p.type === "instance" ? (
+                      <Form.Item label={p.label}>
+                        <Button type="primary" onClick={() => void pickInstance()}>
+                          {t("TXT_CODE_2c9083a1")}
+                        </Button>
+                        {pickedName && <Typography.Text className="ml-12">{pickedName}</Typography.Text>}
+                      </Form.Item>
+                    ) : (
+                      // SECURITY: ids are allow-listed characters only (CWE-20).
+                      <Form.Item label={p.label} name={p.field} rules={[{ pattern: ID_VALUE, message: p.label }]}>
+                        <Input />
+                      </Form.Item>
+                    )}
                   </Col>
                 ))}
+                {/* The instance picker fills instanceId/daemonId, as upstream params.vue did;
+                    register hidden fields for whichever the card does not ask for itself. */}
+                {paramsCard.params?.some((p) => p.type === "instance") &&
+                  ["instanceId", "daemonId"]
+                    .filter((name) => !paramsCard.params?.some((p) => p.field === name))
+                    .map((name) => (
+                      <Form.Item key={name} hidden name={name} rules={[{ pattern: ID_VALUE }]}>
+                        <Input />
+                      </Form.Item>
+                    ))}
               </Row>
             </Form>
             <p><BulbOutlined /><span className="ml-4">{t("TXT_CODE_e29b79df")}</span></p>

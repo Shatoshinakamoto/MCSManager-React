@@ -1,0 +1,35 @@
+/* Port of the scoped styles in DownloadJavaDialog.vue. */
+.java-card {
+  width: 140px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  border: 1px solid var(--color-gray-5);
+  overflow: hidden;
+
+  &:hover {
+    border-color: #1890ff;
+  }
+
+  .ant-card-body {
+    padding: 12px;
+    text-align: center;
+  }
+  .ant-card-meta-title {
+    margin-bottom: 4px !important;
+  }
+  .ant-card-meta-description {
+    margin-top: 4px;
+  }
+}
+.java-card-selected {
+  border-color: #1890ff;
+  background: linear-gradient(135deg, var(--color-gray-1) 0%, var(--color-gray-2) 100%);
+}
+.java-card-cover {
+  padding: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, var(--color-gray-3) 0%, var(--color-gray-5) 100%);
+}

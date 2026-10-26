@@ -1,0 +1,14 @@
+/*
+ * Frosted glass look from upstream UploadBubble.vue. antd 6 renders the
+ * float button as one element (antd 4 had an inner .ant-float-btn-body).
+ */
+.ant-float-btn.frosted-float-button {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.ant-float-btn.frosted-float-button:hover {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}

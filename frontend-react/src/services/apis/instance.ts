@@ -5,6 +5,7 @@
  */
 import { defineApi } from "@/services/apiService";
 import type { InstanceDetail, NodeStatus } from "@/types/instance";
+import type { NewScheduleTask, Schedule, ScheduleAction } from "@/types/schedule";
 
 type InstanceRef = { params: { uuid: string; daemonId: string } };
 type BatchItems = { data: { instanceUuid: string; daemonId: string }[] };
@@ -60,3 +61,175 @@ export const batchDelete = defineApi<{ params: { daemonId: string }; data: { uui
   url: "/api/instance",
   method: "DELETE"
 });
+
+export interface RemoteMappingEntry {
+  from: { addr: string; prefix: string };
+  to: { addr: string; prefix: string };
+}
+
+/** One-time stream credentials for the browser's direct daemon connection. */
+export interface MissionPassportResponse {
+  addr: string;
+  password: string;
+  prefix: string;
+  remoteMappings: RemoteMappingEntry[];
+}
+
+export const setUpTerminalStreamChannel = defineApi<{ params: { daemonId: string; uuid: string } }, MissionPassportResponse>({
+  url: "/api/protected_instance/stream_channel",
+  method: "POST"
+});
+
+export const getInstanceOutputLog = defineApi<{ params: { uuid: string; daemonId: string } }, string>({
+  url: "/api/protected_instance/outputlog",
+  method: "GET"
+});
+
+// ---- Instance settings, config files, schedules (Phase 2) ----
+
+export const updateAnyInstanceConfig = defineApi<
+  {
+    params: {
+      uuid: string;
+      daemonId: string;
+    };
+    data: IGlobalInstanceConfig;
+  },
+  {
+    instanceUuid: string;
+  }
+>({
+  url: "/api/instance",
+  method: "PUT"
+});
+
+export const uploadAddress = defineApi<
+  {
+    params: {
+      upload_dir: string;
+      daemonId: string;
+    };
+    data: IGlobalInstanceConfig;
+  },
+  {
+    instanceUuid: string;
+    password: string;
+    addr: string;
+    remoteMappings: RemoteMappingEntry[];
+  }
+>({
+  url: "/api/instance/upload",
+  method: "POST"
+});
+
+export const uploadInstanceFile = defineApi<
+  {
+    params: {
+      unzip: number;
+      code: string;
+    };
+    data: FormData;
+  },
+  any
+>({
+  method: "POST",
+  headers: { "Content-Type": "multipart/form-data" }
+});
+
+export const getConfigFileList = defineApi<
+  {
+    params: {
+      uuid: string;
+      daemonId: string;
+    };
+    data: {
+      files: string[];
+    };
+  },
+  {
+    check: boolean;
+    file: string;
+  }[]
+>({
+  method: "POST",
+  url: "/api/protected_instance/process_config/list"
+});
+
+export const scheduleList = defineApi<
+  {
+    params: {
+      daemonId: string;
+      uuid: string;
+    };
+  },
+  Schedule[]
+>({
+  method: "GET",
+  url: "/api/protected_schedule"
+});
+
+export const scheduleDelete = defineApi<
+  {
+    params: {
+      daemonId: string;
+      uuid: string;
+      task_name: string;
+    };
+  },
+  boolean
+>({
+  method: "DELETE",
+  url: "/api/protected_schedule"
+});
+
+export const scheduleCreate = defineApi<
+  {
+    params: {
+      daemonId: string;
+      uuid: string;
+    };
+    data: NewScheduleTask & { actions: ScheduleAction[] };
+  },
+  boolean
+>({
+  url: "/api/protected_schedule",
+  method: "POST"
+});
+
+export const reinstallInstance = defineApi<
+  {
+    params: {
+      daemonId: string;
+      uuid: string;
+    };
+    data: {
+      targetUrl?: string;
+      title: string;
+      description: string;
+    };
+  },
+  boolean
+>({
+  url: "/api/protected_instance/install_instance",
+  method: "POST"
+});
+
+// ---- Instance creation and the app market (same URLs as upstream services/apis/instance.ts). ----
+export const createInstance = defineApi<
+  { params: { daemonId: string }; data: IGlobalInstanceConfig },
+  { instanceUuid: string; config: IGlobalInstanceConfig }
+>({ url: "/api/instance", method: "POST" });
+
+export const quickInstallListAddr = defineApi<undefined, IQuickStartTemplate>({
+  url: "/api/instance/quick_install_list",
+  method: "GET"
+});
+
+/** Starts the daemon's quick_install task (download + unpack a market template into a new instance). */
+export const createAsyncTask = defineApi<
+  {
+    params: { daemonId: string; uuid: string; task_name: string };
+    data: { time: number; newInstanceName: string; targetLink?: string; setupInfo?: IGlobalInstanceConfig };
+  },
+  { instanceConfig: IGlobalInstanceConfig; instanceStatus: number; instanceUuid: string; status: number; taskId: string }
+>({ url: "/api/protected_instance/asynchronous", method: "POST" });

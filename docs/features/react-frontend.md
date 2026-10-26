@@ -31,9 +31,10 @@ Boot order matches `main.ts`: panel status, language, layout config, then lazy-l
 |---|---|---|
 | 0 | Shell, header, breadcrumbs, routing, layout grid, i18n, theme, API client, install, login | done |
 | 1 | Sidebar layout, phone bottom nav, design mode (drag/drop, card operator, new-card dialog), MyselfInfoDialog, overview/status/chart widgets, instance and node lists | done: shell, design mode, profile dialog, Overview, Daemons, Instances, My Application and Open Page |
-| 2 | Next. Instance console: xterm terminal, controls, file manager, schedules, server config, mods, Docker options in instance settings | |
-| 3 | Admin: settings (done early, with the Daemon Passport pane), users, permissions, images (Docker), audit log, market and quick start | |
-| 4 | Decorative cards (image, iframe, text, link, clock, carousel, music, plugin), cutover: replace `frontend/`, update build scripts | |
+| 2 | Instance console: xterm terminal, controls, file manager, schedules, server config, mods, Docker options in instance settings | done |
+| 3 | Admin: settings (with the Daemon Passport and Additional Security panes), users, permissions and the Web Admin role, images (Docker), audit log, market, market editor and quick start; fork features (dev-tools blocker, tamper check, artwork); SSO bind page, upload bubble | done |
+| 4 | Decorative cards (image, iframe, text, link, clock, carousel, music, plugin); cutover: build, install, dev and CI scripts use `frontend-react/`, CSP has no eval fallback | done |
+| 5 | Parity sweep: every upstream component, route, settings option and translation key checked; renewal dialog, card preview notice, manual copy, broken-instance notice | done |
 
 `PORT_STATUS` in `src/config/widgets.tsx` tracks every widget type.
 
@@ -75,10 +76,16 @@ Checked with `npm audit` on 2026-10-25: 0 vulnerabilities. All versions pinned e
 | dayjs | 1.11.23 | Dates (same as upstream) |
 | pretty-bytes | 7.2.0 | Byte formatting (same as upstream) |
 | echarts | 6.1.0 | Charts (upstream uses 5.x, which has GHSA-fgmj-fm8m-jvvx) |
+| @xterm/xterm and addons | 5.5.0 (addons pinned) | Instance terminal (same as upstream) |
+| codemirror 6, @codemirror/*, @uiw/codemirror-theme-tokyo-night | pinned | File and config editor |
+| fflate | 0.8.3 | Archive handling in the file manager |
 | vite, @vitejs/plugin-react, typescript, sass, vitest, jsdom | 8.3.5, 6.1.2, 7.0.2, 1.106.1, 5.0.5, 30.1.3 | Tooling (dev only) |
 
 ## 6. Limitations and known risks
-- Most widgets still show the "not ported" card (see phases).
+- Plugin cards are isolated frames. Old upstream plugins run through the Old plugin API mode ([legacy-plugins.md](legacy-plugins.md)); plugins that changed panel state or used the panel's `window` cannot.
+- Not ported on purpose, because upstream never uses them: `CmdAssistantDialog`, `DockerVersionSelectDialog`, `PingConfig` (replaced by the ping settings dialog), `IframeBox` (business iframe bridge; it would also hand the user's API key to an embedded page), `NoPreviewCard`, `TextContainer`, `TerminalTags`.
+- Translations: every key added by this port exists in all 12 languages.
+- The Vue `frontend/` is kept unbuilt as the porting reference; upstream changes there must be ported by hand.
 - jsdom 30 warns that it wants Node >= 22.22.2 (tests still pass on 22.22.0).
 
 ## 7. Troubleshooting

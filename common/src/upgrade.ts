@@ -11,6 +11,7 @@ import http from "http";
 import https from "https";
 import path from "path";
 import { pipeline } from "stream";
+import { hasIntegrityHashes, refreshIntegrityHashes } from "./tamper_check";
 
 // node-stream-zip has no bundled types in this version; import it loosely.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -502,6 +503,17 @@ export async function applyUpgradePackage(opts: {
       log(`Failed to apply "${rel}": ${(e as Error).message}`);
       await rollbackOverlays([...overlays, rel], opts.cwd, opts.backupBase, log);
       throw e;
+    }
+  }
+  // Johnnykins tamper check: an install built with hash files must keep them
+  // in step with the bundle the operator just applied, or the next start
+  // refuses to run. Packages that ship their own hash files are left alone.
+  if (hasIntegrityHashes(opts.cwd) && !overlays.some((rel) => path.basename(rel) === "app-hash.txt")) {
+    try {
+      const written = refreshIntegrityHashes(opts.cwd);
+      log(`Refreshed integrity hashes: ${written.join(", ")}`);
+    } catch (e) {
+      log(`Failed to refresh integrity hashes: ${(e as Error).message}`);
     }
   }
   return { overlays, packageRoot };

@@ -30,6 +30,10 @@ export class User implements IUser {
 }
 
 export enum ROLE {
+  // Web Admin (ported from the Johnnykins fork): the only role allowed to manage
+  // daemons, the Docker environment, users and panel settings once
+  // `webAdminEnforced` is on. See service/web_admin.ts.
+  WEBADMIN = 20,
   ADMIN = 10,
   USER = 1,
   GUEST = 0,

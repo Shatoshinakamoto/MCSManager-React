@@ -234,7 +234,7 @@ export default function Shortcut({ card, targetInstanceInfo, targetDaemonId, cla
         <Space wrap size={6} className="mb-4">
           {operations.map((item, i) =>
             item.area ? (
-              <Divider key={`area-${i}`} type="vertical" />
+              <Divider key={`area-${i}`} orientation="vertical" />
             ) : (
               <Tooltip key={item.title} title={item.title}>
                 <Button

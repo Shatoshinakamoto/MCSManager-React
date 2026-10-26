@@ -24,7 +24,8 @@ import {
   ProjectOutlined,
   QuestionCircleOutlined,
   ReloadOutlined,
-  SafetyCertificateOutlined
+  SafetyCertificateOutlined,
+  SecurityScanOutlined
 } from "@ant-design/icons";
 import { Alert, App, Button, Checkbox, Form, Input, InputNumber, Select, Tag, Typography } from "antd";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
@@ -46,6 +47,7 @@ import {
   type Settings as SettingsData
 } from "@/services/apis/settings";
 import { useAppConfig } from "@/stores/appConfig";
+import { useIsWebAdmin } from "@/stores/appState";
 import { SETTINGS_PAGE, useLayoutConfig } from "@/stores/layoutConfig";
 import { useLayoutContainer } from "@/stores/layoutContainer";
 import { arrayFilter } from "@/tools/array";
@@ -120,6 +122,7 @@ export default function Settings({ card }: WidgetProps) {
   const isDesignMode = useLayoutContainer((s) => s.isDesignMode);
   const setDesignMode = useLayoutContainer((s) => s.setDesignMode);
   const sidebarPositionNow = useAppConfig((s) => s.sidebarPosition);
+  const isWebAdmin = useIsWebAdmin();
 
   const [formData, setFormData] = useState<MySettings>();
   const [submitting, setSubmitting] = useState(false);
@@ -162,6 +165,7 @@ export default function Settings({ card }: WidgetProps) {
 
   useEffect(() => {
     let alive = true;
+    const initialTab = query.get("tab");
     void (async () => {
       try {
         const res = await settingInfo();
@@ -183,15 +187,16 @@ export default function Settings({ card }: WidgetProps) {
         });
         const pos = cfg?.theme?.sidebarPosition;
         setSidebarPosition(pos === "left" || pos === "right" ? pos : sidebarPositionNow);
-        if (query.get("tab") === "pro") setActiveKey("pro");
+        if (initialTab === "pro") setActiveKey("pro");
       } catch (err) {
         reportErrorMsg(err);
       }
     })();
     void refreshUpgradeInfo();
-    return () => {
-      alive = false;
-      // Upstream drops ?tab= when leaving the page.
+    // Upstream drops ?tab= when leaving the page. Dropping it here, once it
+    // has been read, has the same effect; doing it on unmount would navigate
+    // back to /settings, because setQuery resolves against this route.
+    if (initialTab !== null) {
       setQuery(
         (q) => {
           q.delete("tab");
@@ -199,6 +204,9 @@ export default function Settings({ card }: WidgetProps) {
         },
         { replace: true }
       );
+    }
+    return () => {
+      alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -263,7 +271,7 @@ export default function Settings({ card }: WidgetProps) {
 
   const startDesignUI = () => {
     setDesignMode(true);
-    notification.warning({ placement: "bottom", message: t("TXT_CODE_7b1adf35"), description: t("TXT_CODE_6b6f1d3") });
+    notification.warning({ placement: "bottom", title: t("TXT_CODE_7b1adf35"), description: t("TXT_CODE_6b6f1d3") });
   };
 
   // ---- SSO ----
@@ -388,6 +396,7 @@ export default function Settings({ card }: WidgetProps) {
     { title: t("TXT_CODE_AUTOUPDATE_TAB_TITLE"), key: "autoUpdate", icon: CloudUploadOutlined },
     { title: t("TXT_CODE_1c18acc0"), key: "ui", icon: PicLeftOutlined },
     { title: t("TXT_CODE_9c3ca8f"), key: "security", icon: LockOutlined },
+    { title: t("TXT_CODE_JK_SEC_TAB_TITLE"), key: "additionalSecurity", icon: SecurityScanOutlined },
     { title: t("TXT_CODE_JK_TAB_TITLE"), key: "passport", icon: SafetyCertificateOutlined },
     { title: t("TXT_CODE_ea1600d2"), key: "audit", icon: FileProtectOutlined },
     { title: t("TXT_CODE_SSO_TAB_TITLE"), key: "sso", icon: ApiOutlined },
@@ -693,6 +702,85 @@ export default function Settings({ card }: WidgetProps) {
         {saveBtn(submitPassport)}
       </Pane>
     ),
+    additionalSecurity: (
+      <Pane title={t("TXT_CODE_JK_SEC_TAB_TITLE")} maxHeight={h}>
+        <Typography.Paragraph>
+          <Typography.Text type="secondary">{t("TXT_CODE_JK_SEC_DESC")}</Typography.Text>
+        </Typography.Paragraph>
+        <Field title={t("TXT_CODE_JK_SEC_WEBADMIN")} desc={t("TXT_CODE_JK_SEC_WEBADMIN_DESC")}>
+          {/* SECURITY: the panel also refuses this unless the caller is a Web Admin. */}
+          <Select
+            value={String(Boolean(fd.webAdminEnforced))}
+            disabled={!isWebAdmin}
+            style={{ maxWidth: 320 }}
+            options={yesNo}
+            onChange={(v) => set("webAdminEnforced", v === "true")}
+          />
+        </Field>
+        <Field title={t("TXT_CODE_JK_SEC_SESSION")} desc={t("TXT_CODE_JK_SEC_SESSION_DESC")}>
+          <InputNumber
+            value={fd.sessionMaxAgeMinutes ?? 60}
+            min={0}
+            max={10080}
+            style={{ maxWidth: 320, width: "100%" }}
+            onChange={(v) => set("sessionMaxAgeMinutes", Number(v ?? 0))}
+          />
+        </Field>
+        <Field title={t("TXT_CODE_JK_SEC_HELMET")} desc={t("TXT_CODE_JK_SEC_HELMET_DESC")}>
+          {yesNoSelect("helmet")}
+        </Field>
+        <Field title={t("TXT_CODE_JK_SEC_CORS")} desc={t("TXT_CODE_JK_SEC_CORS_DESC")}>
+          {yesNoSelect("cors")}
+        </Field>
+        <Field title={t("TXT_CODE_JK_SEC_ORIGIN")} desc={t("TXT_CODE_JK_SEC_ORIGIN_DESC")} hidden={!fd.cors}>
+          <Input value={fd.origin} style={{ maxWidth: 480 }} placeholder="https://panel.example.com" onChange={(e) => set("origin", e.target.value)} />
+        </Field>
+        <Field title={t("TXT_CODE_JK_SEC_RATE")} desc={t("TXT_CODE_JK_SEC_RATE_DESC")}>
+          {yesNoSelect("rateLimiter")}
+        </Field>
+        <Field title={t("TXT_CODE_JK_SEC_RATE_MAX")} hidden={!fd.rateLimiter}>
+          <InputNumber
+            value={fd.rateLimitMax ?? 20}
+            min={1}
+            max={100000}
+            style={{ maxWidth: 320, width: "100%" }}
+            onChange={(v) => set("rateLimitMax", Number(v) || 20)}
+          />
+        </Field>
+        <Field title={t("TXT_CODE_JK_SEC_RATE_DURATION")} hidden={!fd.rateLimiter}>
+          <InputNumber
+            value={fd.rateLimitDuration ?? 10000}
+            min={1000}
+            max={86400000}
+            step={1000}
+            style={{ maxWidth: 320, width: "100%" }}
+            onChange={(v) => set("rateLimitDuration", Number(v) || 10000)}
+          />
+        </Field>
+        <Field title={t("TXT_CODE_JK_SEC_DAEMONS")} desc={t("TXT_CODE_JK_SEC_DAEMONS_DESC")} hidden={!fd.rateLimiter}>
+          {(fd.daemonServerIDs ?? []).map((id, index) => (
+            <div key={index} style={{ display: "flex", gap: 8, maxWidth: 480, marginBottom: 8 }}>
+              <Input
+                value={id}
+                placeholder={t("TXT_CODE_JK_SEC_DAEMON_PLACEHOLDER")}
+                onChange={(e) => set("daemonServerIDs", (fd.daemonServerIDs ?? []).map((v, i) => (i === index ? e.target.value : v)))}
+              />
+              <Button danger onClick={() => set("daemonServerIDs", (fd.daemonServerIDs ?? []).filter((_, i) => i !== index))}>
+                {t("TXT_CODE_JK_SEC_REMOVE")}
+              </Button>
+            </div>
+          ))}
+          <Button onClick={() => set("daemonServerIDs", [...(fd.daemonServerIDs ?? []), ""])}>{t("TXT_CODE_JK_SEC_ADD")}</Button>
+        </Field>
+        <Field title={t("TXT_CODE_JK_SEC_PANDORA")} desc={t("TXT_CODE_JK_SEC_PANDORA_DESC")}>
+          {yesNoSelect("pandorasWall")}
+        </Field>
+        <Field title={t("TXT_CODE_JK_SEC_DEVBLOCKER")} desc={t("TXT_CODE_JK_SEC_DEVBLOCKER_DESC")}>
+          {yesNoSelect("devBlocker")}
+        </Field>
+        {saveBtn(() => void submit(false))}
+      </Pane>
+    ),
     audit: (
       <Pane title={t("TXT_CODE_ea1600d2")} maxHeight={h}>
         <Field title={t("TXT_CODE_3c7c9297")} desc={t("TXT_CODE_16a4e557")}>
@@ -896,7 +984,10 @@ export default function Settings({ card }: WidgetProps) {
         <div className="pb-4 flex">
           {[
             { title: "GitHub", icon: GithubOutlined, url: "https://github.com/MCSManager/MCSManager" },
-            { title: "Discord", icon: MessageOutlined, url: "https://discord.gg/BNpYMVX7Cd" }
+            { title: "Discord", icon: MessageOutlined, url: "https://discord.gg/BNpYMVX7Cd" },
+            // Johnnykins fork credits (same titles and links as the fork's About pane).
+            { title: "Modified By", icon: GithubOutlined, url: "https://github.com/john1234brown/" },
+            { title: "Personal Mentor Vampeyer", icon: GithubOutlined, url: "https://github.com/Vampeyer/" }
           ].map(linkBtn)}
         </div>
         <Typography.Paragraph>

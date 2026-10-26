@@ -1,0 +1,12 @@
+/* Search bar above the market list (upstream AppPackages.vue scoped styles). */
+.detail-search-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.detail-search-platform,
+.detail-search-keyword {
+  flex-shrink: 0;
+}

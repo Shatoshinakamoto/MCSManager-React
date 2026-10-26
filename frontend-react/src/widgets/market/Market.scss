@@ -1,0 +1,10 @@
+/* Market page (upstream widgets/market/index.vue scoped styles). */
+.manual-install-options {
+  margin: 24px auto;
+}
+/* Same box as the <p> it replaces (antd typography gives p a 1em bottom margin). */
+.market-links {
+  opacity: 0.6;
+  margin-bottom: 1em;
+  white-space: nowrap;
+}

@@ -1,0 +1,279 @@
+<!doctype html>
+<!--
+  Legacy plugin host for the MCSManager plugin card.
+
+  Old (upstream 10.x) HTML plugins expected to run inside the panel page with
+  window.$axios, $theme, $realWindow, $onMounted and $onUnmounted. This page
+  recreates that API inside a sandboxed frame instead:
+  - The plugin card loads this page in an <iframe sandbox> without
+    allow-same-origin, and the panel also sends a CSP `sandbox` directive for
+    it, so it always runs in an opaque origin: no panel cookies, storage, DOM
+    or navigation of the panel tab (CWE-94, CWE-829, CWE-1021).
+  - $axios calls to other sites are plain fetches from this frame, without
+    credentials. Calls to the panel ("/api/...") are posted to the plugin card,
+    which answers only allow-listed read-only GETs, and only when an admin has
+    allowed panel data for that card. Everything else gets HTTP 403.
+  - $realWindow is this frame's own window, not the panel's.
+  - The panel serves this page with its own CSP: inline and http(s) scripts
+    may run (that is what a plugin is), but never 'unsafe-eval' and never in
+    the panel's origin.
+  Messages are accepted only from the parent window.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>MCSManager plugin</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+      }
+    </style>
+    <script data-mcsm-host>
+      (function () {
+        "use strict";
+        var parentWin = window.parent;
+        if (!parentWin || parentWin === window) return;
+
+        var API_TIMEOUT_MS = 30000;
+        var callbacks = Object.create(null);
+        var pending = new Map();
+        var seq = 0;
+        var panelOrigin = "";
+        var loaded = false;
+
+        function addCallback(event, cb) {
+          if (typeof cb !== "function") return;
+          (callbacks[event] = callbacks[event] || []).push(cb);
+        }
+        function emit(event) {
+          var args = Array.prototype.slice.call(arguments, 1);
+          (callbacks[event] || []).slice().forEach(function (cb) {
+            try {
+              cb.apply(null, args);
+            } catch (err) {
+              console.error("Plugin callback error:", err);
+            }
+          });
+        }
+
+        /** Builds an axios-style error carrying `response`. */
+        function httpError(response) {
+          var err = new Error("Request failed with status code " + response.status);
+          err.response = response;
+          err.config = response.config;
+          return err;
+        }
+
+        function toQuery(params) {
+          var q = new URLSearchParams();
+          if (params && typeof params === "object") {
+            Object.keys(params).forEach(function (k) {
+              var v = params[k];
+              if (v === undefined || v === null) return;
+              q.append(k, typeof v === "object" ? JSON.stringify(v) : String(v));
+            });
+          }
+          return q;
+        }
+
+        function viaPanelBridge(method, url, config) {
+          return new Promise(function (resolve, reject) {
+            var id = ++seq;
+            var params = {};
+            url.searchParams.forEach(function (v, k) {
+              params[k] = v;
+            });
+            toQuery(config.params).forEach(function (v, k) {
+              params[k] = v;
+            });
+            var timer = setTimeout(function () {
+              if (!pending.has(id)) return;
+              pending.delete(id);
+              reject(new Error("Panel API request timed out"));
+            }, API_TIMEOUT_MS);
+            pending.set(id, { resolve: resolve, reject: reject, timer: timer, config: config });
+            parentWin.postMessage({ type: "mcsmanager:api", id: id, method: method, path: url.pathname, params: params }, "*");
+          });
+        }
+
+        function viaFetch(method, url, config) {
+          toQuery(config.params).forEach(function (v, k) {
+            url.searchParams.append(k, v);
+          });
+          var headers = Object.assign({}, config.headers || {});
+          var body;
+          if (config.data !== undefined && method !== "GET" && method !== "HEAD") {
+            if (typeof config.data === "string" || config.data instanceof FormData || config.data instanceof Blob) body = config.data;
+            else {
+              body = JSON.stringify(config.data);
+              if (!headers["Content-Type"] && !headers["content-type"]) headers["Content-Type"] = "application/json";
+            }
+          }
+          // SECURITY: credentials are never sent from plugin frames.
+          return fetch(url.toString(), { method: method, headers: headers, body: body, credentials: "omit", referrerPolicy: "no-referrer" }).then(function (res) {
+            var type = res.headers.get("content-type") || "";
+            var read = config.responseType === "text" || type.indexOf("json") < 0 ? res.text() : res.json();
+            return read.then(function (data) {
+              var hdrs = {};
+              res.headers.forEach(function (v, k) {
+                hdrs[k] = v;
+              });
+              var response = { data: data, status: res.status, statusText: res.statusText, headers: hdrs, config: config };
+              if (res.status >= 200 && res.status < 300) return response;
+              throw httpError(response);
+            });
+          });
+        }
+
+        /** Minimal axios-compatible client (request, get, post, put, patch, delete, head). */
+        function request(config) {
+          config = Object.assign({}, config || {});
+          var method = String(config.method || "GET").toUpperCase();
+          var url;
+          try {
+            url = new URL(String(config.url || ""), (config.baseURL ? new URL(config.baseURL, panelOrigin + "/") : panelOrigin + "/").toString());
+          } catch (err) {
+            return Promise.reject(err);
+          }
+          if (url.protocol !== "http:" && url.protocol !== "https:") return Promise.reject(new Error("Only http(s) URLs are allowed"));
+          if (url.origin === panelOrigin) return viaPanelBridge(method, url, config);
+          return viaFetch(method, url, config);
+        }
+
+        function $axios(urlOrConfig, config) {
+          if (typeof urlOrConfig === "string") return request(Object.assign({}, config || {}, { url: urlOrConfig }));
+          return request(urlOrConfig);
+        }
+        $axios.request = request;
+        ["get", "delete", "head", "options"].forEach(function (m) {
+          $axios[m] = function (url, config) {
+            return request(Object.assign({}, config || {}, { url: url, method: m }));
+          };
+        });
+        ["post", "put", "patch"].forEach(function (m) {
+          $axios[m] = function (url, data, config) {
+            return request(Object.assign({}, config || {}, { url: url, method: m, data: data }));
+          };
+        });
+        $axios.create = function () {
+          return $axios;
+        };
+        $axios.defaults = { headers: { common: {} } };
+        // Interceptors are accepted for compatibility but do nothing.
+        $axios.interceptors = { request: { use: function () {}, eject: function () {} }, response: { use: function () {}, eject: function () {} } };
+
+        var api = {
+          $axios: $axios,
+          $realWindow: window,
+          $onMounted: function (cb) {
+            addCallback("onMounted", cb);
+          },
+          $onUnmounted: function (cb) {
+            addCallback("onUnmounted", cb);
+          },
+          // New in this port: called with the theme whenever the panel theme changes.
+          $onThemeChange: function (cb) {
+            addCallback("onThemeChange", cb);
+          },
+          $emit: emit,
+          $mountSandbox: function () {
+            emit("onMounted");
+          },
+          $destroySandbox: function () {
+            emit("onUnmounted");
+          }
+        };
+        Object.keys(api).forEach(function (k) {
+          Object.defineProperty(window, k, { value: api[k], writable: false, configurable: false });
+        });
+        window.$theme = "0";
+
+        function copyAttributes(from, to) {
+          for (var i = 0; i < from.attributes.length; i++) to.setAttribute(from.attributes[i].name, from.attributes[i].value);
+        }
+
+        /** Re-creates a parsed <script> so it runs, waiting for external ones to keep their order. */
+        function runScript(old) {
+          return new Promise(function (resolve) {
+            var s = document.createElement("script");
+            copyAttributes(old, s);
+            if (old.src) {
+              s.onload = s.onerror = function () {
+                resolve();
+              };
+              old.replaceWith(s);
+            } else {
+              s.textContent = old.textContent;
+              old.replaceWith(s);
+              resolve();
+            }
+          });
+        }
+
+        function render(html, baseUrl) {
+          var doc = new DOMParser().parseFromString(String(html), "text/html");
+          if (baseUrl) {
+            var base = document.createElement("base");
+            base.href = baseUrl;
+            document.head.appendChild(base);
+          }
+          Array.prototype.slice.call(doc.head.childNodes).forEach(function (n) {
+            if (n.nodeName !== "BASE" && n.nodeName !== "TITLE") document.head.appendChild(document.importNode(n, true));
+          });
+          Array.prototype.slice.call(doc.body.childNodes).forEach(function (n) {
+            document.body.appendChild(document.importNode(n, true));
+          });
+          var scripts = Array.prototype.slice.call(document.querySelectorAll("script")).filter(function (s) {
+            return s.getAttribute("data-mcsm-host") === null;
+          });
+          return scripts.reduce(function (p, s) {
+            return p.then(function () {
+              return runScript(s);
+            });
+          }, Promise.resolve()).then(function () {
+            emit("onMounted");
+          });
+        }
+
+        window.addEventListener("message", function (event) {
+          if (event.source !== parentWin) return;
+          var m = event.data;
+          if (!m || typeof m !== "object") return;
+          if (m.type === "mcsmanager:load" && !loaded) {
+            loaded = true;
+            try {
+              panelOrigin = new URL(String(m.panelOrigin)).origin;
+            } catch (err) {
+              return;
+            }
+            window.$theme = String(m.theme);
+            render(m.html, typeof m.baseUrl === "string" ? m.baseUrl : "");
+          } else if (m.type === "mcsmanager:api-result") {
+            var p = pending.get(m.id);
+            if (!p) return;
+            pending.delete(m.id);
+            clearTimeout(p.timer);
+            var response = { data: m.data, status: m.status, statusText: "", headers: {}, config: p.config };
+            if (m.status >= 200 && m.status < 300) p.resolve(response);
+            else p.reject(httpError(response));
+          } else if (m.type === "mcsmanager:theme") {
+            window.$theme = String(m.theme);
+            emit("onThemeChange", window.$theme);
+          } else if (m.type === "mcsmanager:unmount") {
+            emit("onUnmounted");
+          }
+        });
+
+        parentWin.postMessage({ type: "mcsmanager:plugin-ready" }, "*");
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

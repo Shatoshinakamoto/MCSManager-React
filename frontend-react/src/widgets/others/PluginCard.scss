@@ -1,0 +1,12 @@
+/* Copied from upstream PluginCard.vue scoped styles; the container is now an iframe. */
+.PluginCard.plugin-card-container,
+.PluginCard .html-plugin-container {
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+.PluginCard .html-plugin-container {
+  border: 0;
+  display: block;
+}

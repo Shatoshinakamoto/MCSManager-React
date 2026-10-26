@@ -1,0 +1,37 @@
+/* Copied from upstream ImageBox.vue / Carousel.vue scoped styles. */
+.ImageBox,
+.CarouselCard {
+  img {
+    border: 0;
+    border-radius: 6px;
+    width: 100%;
+    box-shadow: 0 1px 2px 1px var(--card-shadow-color);
+    height: 100%;
+    object-fit: cover;
+    aspect-ratio: 16/9;
+  }
+  .mask {
+    position: absolute;
+    z-index: 1;
+    background-color: rgba(0, 0, 0, 0.5);
+    width: 100%;
+    height: 100%;
+    top: 0;
+
+    button {
+      margin: auto;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      position: absolute;
+      width: fit-content;
+    }
+  }
+}
+.app-dark-theme {
+  .ImageBox img,
+  .CarouselCard img {
+    filter: brightness(0.7);
+  }
+}

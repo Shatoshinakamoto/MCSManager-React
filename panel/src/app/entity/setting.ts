@@ -73,6 +73,31 @@ export default class SystemConfig {
   // Whether to allow cross-domain requests
   crossDomain: boolean = false;
 
+  // ---- Additional Security (ported from the Johnnykins fork; same key names) ----
+  // See docs/configuration/panel-additional-security.md. Middleware is built at
+  // startup from these values, so changes apply after a panel restart.
+  // CORS allow-list: when on, only `origin` (plus same-origin requests) may call the API cross-site.
+  cors: boolean = false;
+  origin: string = "";
+  // Security headers (helmet): CSP, nosniff, frame and referrer policy.
+  helmet: boolean = true;
+  // Per-client-IP request limit for /api (fork default was on at 20 per 10 s; off here
+  // because the panel UI alone makes more than 20 requests on some pages).
+  rateLimiter: boolean = false;
+  rateLimitMax: number = 20;
+  rateLimitDuration: number = 10000;
+  // Client IPs that skip the rate limiter (your daemons' public addresses). The fork
+  // stored hex "JohnnykinsID" values; those are decoded to their socket address.
+  daemonServerIDs: string[] = [];
+  // Lock the panel's middleware stack after startup (rewrite of the fork's PandorasWall).
+  pandorasWall: boolean = false;
+  // Close the browser tab when developer tools open (fork's devBlocker, disable-devtool).
+  devBlocker: boolean = false;
+  // Only Web Admins (ROLE 20) may use the Web Admin routes (service/web_admin.ts).
+  webAdminEnforced: boolean = false;
+  // Absolute login lifetime in minutes, bound to the login IP (fork's sessionExpirationCheck); 0 = off.
+  sessionMaxAgeMinutes: number = 60;
+
   // Whether to use Gzip compression for HTTP return information
   gzip: boolean = false;
 

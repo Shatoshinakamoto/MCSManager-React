@@ -1,6 +1,7 @@
 /** Instance tag editor (port of components/fc/TagsDialog.vue). Resolves with the tags after save or cancel. */
 import { PlusOutlined } from "@ant-design/icons";
-import { Input, message, Modal, Tag, Typography, type InputRef } from "antd";
+import { Input, Modal, Tag, Typography, type InputRef } from "antd";
+import { message } from "@/tools/antdStatic";
 import { useEffect, useRef, useState } from "react";
 import { useInstanceTags, useInstanceTagTips } from "@/hooks/useInstanceTag";
 import { t } from "@/lang/i18n";

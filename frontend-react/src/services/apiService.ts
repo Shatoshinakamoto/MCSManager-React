@@ -9,11 +9,9 @@
  * through React (auto-escaped). Errors are reduced to a message string.
  *
  * Security:
- * - The session cookie authenticates; the per-session `token` is sent as a
- *   query parameter because that is where the unchanged panel reads its
- *   anti-CSRF token (panel middleware/permission.ts). SECURITY-WARNING: tokens
- *   in URLs can land in proxy logs (CWE-598). TODO(security): teach the panel
- *   to accept an X-MCSM-Token header, then move it out of the query string.
+ * - The session cookie authenticates; the per-session anti-CSRF `token` is
+ *   sent in the X-MCSM-Token header (panel middleware/permission.ts), never in
+ *   the URL, so it stays out of proxy logs and Referer headers (CWE-598).
  * - `X-Requested-With` marks requests as XHR, which the panel uses as a CSRF
  *   signal (ASVS V4.2.2).
  * - Relative URLs only ("./api/...") so requests never leave the panel origin
@@ -41,11 +39,17 @@ export function setTokenProvider(fn: () => string | undefined): void {
 
 const http = axios.create();
 http.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
+/** True for absolute ("https://...") or protocol-relative ("//host") URLs. */
+export const isCrossOriginUrl = (url = "") => /^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("//");
+
 http.interceptors.request.use((config) => {
   const token = tokenProvider();
   config.params = { ...(config.params ?? {}) };
   // SECURITY: anti-CSRF token expected by the panel (see header comment).
-  if (token) config.params.token = token;
+  // It is only attached to panel (relative) URLs. File uploads go straight to
+  // the daemon with a one-time password in the path, and upstream also sent
+  // the panel session token there, handing it to another origin (CWE-201).
+  if (token && !isCrossOriginUrl(config.url)) config.headers.set("X-MCSM-Token", token);
   return config;
 });
 
@@ -133,11 +137,28 @@ export const apiService = new ApiService();
  * Build a typed API caller, the React counterpart of upstream useDefineApi.
  * Usage: `const status = await panelStatus({ params: {...} })`.
  */
+/** Per-call options every API accepts on top of its own params/data. */
+type CallOptions = Pick<RequestConfig, "forceRequest" | "errorAlert" | "url" | "onUploadProgress" | "signal" | "timeout">;
+
 export function defineApi<P extends RequestConfig | undefined, T>(base: RequestConfig) {
-  return (config?: P): Promise<T | undefined> =>
+  return (config?: P & CallOptions): Promise<T | undefined> =>
     apiService.subscribe<T>({
       ...base,
       ...(config ?? {}),
       headers: { ...(base.headers ?? {}), ...((config as RequestConfig | undefined)?.headers ?? {}) }
     } as RequestConfig);
+}
+
+/**
+ * GET a panel path and return the whole { status, data, time } envelope
+ * without throwing on panel errors. Used by the legacy plugin bridge, whose
+ * plugins expect axios-style `res.data` envelopes.
+ *
+ * SECURITY: `path` must be a panel-relative "/api/..." path; callers check it
+ * against their own allow-list first. The token is added by the interceptor.
+ */
+export async function rawPanelGet(path: string, params: Record<string, string>): Promise<{ status: number; data: unknown }> {
+  if (!path.startsWith("/api/") || path.includes("..")) throw new Error("rawPanelGet: panel API paths only");
+  const res = await http.get("." + path, { params, validateStatus: () => true, timeout: 30_000 });
+  return { status: res.status, data: res.data };
 }

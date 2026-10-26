@@ -66,8 +66,11 @@ export function loginSuccess(ctx: Koa.ParameterizedContext, userName: string) {
   ctx.session["login"] = true;
   ctx.session["userName"] = userName;
   ctx.session["uuid"] = user.uuid;
-  ctx.session["role"] = user.permission === 10 ? ROLE.ADMIN : ROLE.USER;
+  ctx.session["role"] = user.permission >= ROLE.WEBADMIN ? ROLE.WEBADMIN : user.permission >= ROLE.ADMIN ? ROLE.ADMIN : ROLE.USER;
   ctx.session["token"] = timeUuid();
+  // SECURITY: read by sessionLifetime() (middleware/additional_security.ts).
+  ctx.session["loginAt"] = Date.now();
+  ctx.session["loginIp"] = ip;
   ctx.session.save();
 
   logger.info($t("TXT_CODE_42036f92"));

@@ -10,7 +10,7 @@ import {
 import { App } from "antd";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { FLAT_ROUTES } from "@/config/routes";
+import { FLAT_ROUTES, isWebAdminLocked } from "@/config/routes";
 import { t } from "@/lang/i18n";
 import { logoutUser } from "@/services/apis";
 import { useAppConfig } from "@/stores/appConfig";
@@ -53,6 +53,7 @@ export function useHeaderMenus() {
   const setShowUserInfoDialog = useAppTools((s) => s.setShowUserInfoDialog);
   const { save, reset } = useLayoutConfig();
   const isAdmin = isAdminUser(user);
+  const webAdminEnforced = useAppState((s) => s.settings.webAdminEnforced);
   const isLogged = isLoggedIn(user);
 
   const handleToPage = (path: string) => {
@@ -62,6 +63,7 @@ export function useHeaderMenus() {
 
   const menus: MenuRoute[] = FLAT_ROUTES.filter((r) => {
     if (r.path === "/" || !r.nameKey) return false;
+    if (isWebAdminLocked(r, user, webAdminEnforced)) return false;
     if (isDesignMode) return Boolean(r.meta.onlyDisplayEditMode || r.meta.mainMenu);
     if (isAdmin) return r.meta.mainMenu === true && r.meta.onlyDisplayEditMode !== true;
     return r.meta.mainMenu === true && isLogged && Number(user?.permission) >= Number(r.meta.permission);
@@ -85,7 +87,7 @@ export function useHeaderMenus() {
           async onOk() {
             setDesignMode(false);
             await save();
-            notification.success({ placement: "top", message: t("TXT_CODE_47c35915"), description: t("TXT_CODE_e10c992a") });
+            notification.success({ placement: "top", title: t("TXT_CODE_47c35915"), description: t("TXT_CODE_e10c992a") });
             reloadSoon(400);
           }
         })
@@ -101,7 +103,7 @@ export function useHeaderMenus() {
           title: t("TXT_CODE_74fa2f73"), content: t("TXT_CODE_f63bfe78"),
           async onOk() {
             await reset();
-            notification.success({ placement: "top", message: t("TXT_CODE_15c6d4eb"), description: t("TXT_CODE_e10c992a") });
+            notification.success({ placement: "top", title: t("TXT_CODE_15c6d4eb"), description: t("TXT_CODE_e10c992a") });
             reloadSoon(400);
           }
         })
@@ -122,7 +124,7 @@ export function useHeaderMenus() {
           title: t("TXT_CODE_29e85f34"), content: t("TXT_CODE_f18f65db"),
           onOk() {
             setDesignMode(true);
-            notification.warning({ placement: "bottom", message: t("TXT_CODE_7b1adf35"), description: t("TXT_CODE_6b6f1d3") });
+            notification.warning({ placement: "bottom", title: t("TXT_CODE_7b1adf35"), description: t("TXT_CODE_6b6f1d3") });
           }
         })
     },

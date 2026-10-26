@@ -1,0 +1,10 @@
+/* Port of the scoped styles in widgets/instance/Terminal.vue (console styles live in TerminalCore.scss). */
+.instance-terminal-ops .ant-btn + .ant-btn,
+.instance-terminal-ops .ant-btn {
+  margin-left: 8px;
+}
+
+/* ant-design-vue 4 tags carried an 8px end margin; antd 6 does not. */
+.instance-terminal-head .ant-tag {
+  margin-inline-end: 8px;
+}

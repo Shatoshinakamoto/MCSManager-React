@@ -1,0 +1,16 @@
+/* SSO bind page (copied from upstream views/SsoBindLogin.vue scoped styles). */
+.sso-bind-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+.sso-bind-card {
+  max-width: 440px;
+  width: 100%;
+  background-color: var(--login-panel-bg);
+}
+.sso-bind-body {
+  padding: 28px 24px;
+  min-height: 300px;
+}

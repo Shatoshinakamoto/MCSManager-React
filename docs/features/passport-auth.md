@@ -74,7 +74,7 @@ Settings: [daemon](../configuration/daemon-johnnykins.md), [panel](../configurat
 - The fork's IP-ban database keyed on `X-Forwarded-For`/Cloudflare headers is not ported as-is because those headers are client-spoofable; bans key on the socket address, or on `X-Forwarded-For` only from configured `trustedProxies`.
 - Pairing trusts the daemon key for one round. Upstream MCSManager connects to `wss://` daemons with `rejectUnauthorized: false` (TLS not verified); see SECURITY-LOG.
 - Upstream panels (bare-key login) can only connect to a daemon in `off` mode.
-- The fork's PandorasWall and file-hash tamper checks are not ported: the Symbol comparison in `setExpressApp` can never succeed (each `Symbol()` is unique), and a hash file stored next to the code it protects can be replaced together with it. Signed releases and read-only deployment (SLSA, CIS) are the recommended replacement.
+- PandorasWall and the build tamper check were ported later with fixes ([panel-additional-security.md](../configuration/panel-additional-security.md)). A hash file stored next to the code it protects can still be replaced together with it, so signed releases and read-only deployment (SLSA, CIS) remain the stronger control.
 
 ## 7. Troubleshooting
 | Symptom | Cause |

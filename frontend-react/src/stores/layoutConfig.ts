@@ -45,10 +45,14 @@ export function parseLayoutConfig(raw: unknown): PageLayoutConfig[] {
 const updatePage = (pages: PageLayoutConfig[], page: string, fn: (items: LayoutCard[]) => LayoutCard[]) =>
   pages.map((p) => (p.page === page ? { ...p, items: fn([...p.items]) } : p));
 
+const NO_ITEMS: LayoutCard[] = [];
+
 export const useLayoutConfig = create<LayoutConfigState>((set, get) => ({
   pages: [],
   setPages: (pages) => set({ pages }),
-  getPageItems: (page) => get().pages.find((p) => p.page === page)?.items ?? [],
+  // A shared empty array keeps the selector result stable for pages with no
+  // saved layout; a fresh [] each call made React loop on /user and /customer.
+  getPageItems: (page) => get().pages.find((p) => p.page === page)?.items ?? NO_ITEMS,
   deleteItem: (page, id) => set((s) => ({ pages: updatePage(s.pages, page, (items) => items.filter((c) => c.id !== id)) })),
   insertItem: (page, card, index) =>
     set((s) => ({

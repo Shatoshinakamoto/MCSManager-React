@@ -16,8 +16,12 @@ import RemoteServiceSubsystem from "../service/remote_service";
 import { systemConfig } from "../setting";
 import GatewayToken from "../service/gateway_token";
 import { browserFacingAddr } from "../service/proxy_addr";
+import { effectiveLevel } from "../service/web_admin";
 
 const router = new Router({ prefix: "/files" });
+
+// Daemon's global (host-wide) instance id, daemon/src/entity/instance/instance.ts GLOBAL_INSTANCE_UUID_KEY.
+const GLOBAL_INSTANCE_UUID = "global0001";
 
 router.use(async (ctx, next) => {
   const instanceUuid = String(ctx.query.uuid);
@@ -26,6 +30,12 @@ router.use(async (ctx, next) => {
   if (systemConfig?.canFileManager === false && getUserPermission(ctx) < 10) {
     ctx.status = 403;
     ctx.body = $t("TXT_CODE_router.file.off");
+    return;
+  }
+  // Johnnykins fork: the daemon-wide file manager (global instance) is Web Admin only once enforced.
+  if (instanceUuid === GLOBAL_INSTANCE_UUID && getUserPermission(ctx) < effectiveLevel(ROLE.WEBADMIN)) {
+    ctx.status = 403;
+    ctx.body = $t("TXT_CODE_permission.forbiddenInstance");
     return;
   }
   if (isHaveInstanceByUuid(userUuid, daemonId, instanceUuid)) {

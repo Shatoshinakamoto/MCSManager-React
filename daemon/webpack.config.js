@@ -1,5 +1,7 @@
 const path = require("path");
 const nodeExternals = require("webpack-node-externals");
+// Johnnykins fork: writes app-hash.txt / app_map-hash.txt for the startup tamper check.
+const { TamperProofPlugin } = require("../common/tamper_proof_plugin.js");
 
 /**
  * Optional native-acceleration packages that are loaded by their consumers
@@ -71,6 +73,7 @@ module.exports = {
           allowlist: ["mcsmanager-common"]
         })
       ],
+  plugins: [new TamperProofPlugin()],
   output: {
     filename: "app.js",
     path: path.resolve(__dirname, "production")

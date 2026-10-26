@@ -20,7 +20,7 @@ goto cont
 :cont
 cd ../panel
 call npm install
-cd ../frontend
+cd ../frontend-react
 call npm install
 echo All dependencies installed! Use .\npm-dev-windows.bat to start the development environment.
 

@@ -1,5 +1,5 @@
 /** User-facing error reporting, ported from upstream tools/validator. */
-import { message } from "antd";
+import { message } from "@/tools/antdStatic";
 
 /**
  * Show an error toast.
@@ -9,6 +9,13 @@ export function reportErrorMsg(err: unknown): void {
   const text = err instanceof Error ? err.message : String(err ?? "Unknown error");
   message.error(text);
 }
+
+/**
+ * Account password rule shared with the panel (upstream PASSWORD_REGEX): 9-36
+ * ASCII characters with a lower-case letter, an upper-case letter and a digit.
+ * The panel checks it again server-side; this only gives early feedback.
+ */
+export const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[\x00-\x7F]{9,36}$/;
 
 /** antd Form validation errors carry `errorFields`; show the first message (upstream getValidatorErrorMsg). */
 export function getValidatorErrorMsg(error: unknown, def = ""): string {

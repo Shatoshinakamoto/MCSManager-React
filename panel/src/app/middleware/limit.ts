@@ -14,7 +14,7 @@ export function speedLimit(seconds: number, errMsg?: string) {
 
     if (!user) throw new Error($t("TXT_CODE_permission.forbidden"));
 
-    if (user.permission === ROLE.ADMIN) {
+    if (user.permission >= ROLE.ADMIN) {
       return await next();
     }
 

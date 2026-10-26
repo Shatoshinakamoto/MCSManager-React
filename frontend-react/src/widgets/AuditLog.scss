@@ -1,0 +1,48 @@
+/* Port of AuditLog.vue scoped styles. The detail modal renders in a portal,
+   so its rules are not nested under .AuditLog. */
+.AuditLog {
+  .audit-filter .ant-form-item {
+    margin-right: 12px;
+  }
+
+  .audit-time {
+    font-size: 13px;
+    font-family: "Consolas", "Monaco", monospace;
+  }
+
+  .audit-content {
+    word-break: break-word;
+
+    .audit-content-scope {
+      font-size: 12px;
+      color: var(--color-gray-7);
+      margin-top: 2px;
+    }
+  }
+}
+
+.audit-detail {
+  .audit-sentence {
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--color-gray-2);
+    border: 1px solid var(--color-gray-4);
+  }
+
+  .audit-extra-value {
+    word-break: break-all;
+  }
+
+  .audit-json {
+    max-height: 320px;
+    overflow: auto;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    background: var(--color-gray-2);
+    border: 1px solid var(--color-gray-4);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+}

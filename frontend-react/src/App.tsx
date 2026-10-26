@@ -4,9 +4,11 @@
  *
  * Sidebar layout is used when the layout sets sidebarPosition "left" and the
  * window is at least 1400px wide, exactly like upstream useSidebarLayout.
- * TODO(port, phase 2): UploadBubble.
+ * The background-upload bubble is mounted once here, like upstream GLOBAL_COMPONENTS.
  */
 import { App as AntApp, ConfigProvider } from "antd";
+import { AntdStaticBinder } from "@/tools/antdStatic";
+import UploadBubble from "@/components/UploadBubble";
 import enUS from "antd/locale/en_US";
 import zhCN from "antd/locale/zh_CN";
 import { useEffect } from "react";
@@ -28,8 +30,9 @@ import { closeAppLoading } from "@/tools/dom";
 import Install from "@/views/Install";
 import LayoutContainer from "@/views/LayoutContainer";
 import Login from "@/views/Login";
+import SsoBind from "@/views/SsoBind";
 
-const VIEWS = { layout: LayoutContainer, login: Login, install: Install };
+const VIEWS = { layout: LayoutContainer, login: Login, install: Install, ssoBind: SsoBind };
 
 /** Applies resolveNavigation() before rendering any page. */
 function Guarded({ children }: { children: React.ReactNode }) {
@@ -37,7 +40,8 @@ function Guarded({ children }: { children: React.ReactNode }) {
   const isInstall = useAppState((s) => s.isInstall);
   const user = useAppState((s) => s.userInfo);
   const isDesignMode = useLayoutContainer((s) => s.isDesignMode);
-  const redirect = resolveNavigation(location.pathname, { isInstall, user, isDesignMode });
+  const webAdminEnforced = useAppState((s) => s.settings.webAdminEnforced);
+  const redirect = resolveNavigation(location.pathname, { isInstall, user, isDesignMode, webAdminEnforced });
   if (redirect && redirect !== location.pathname) return <Navigate to={redirect} replace />;
   return <>{children}</>;
 }
@@ -66,6 +70,8 @@ export default function App() {
       {/* tag variant "outlined": ant-design-vue 4 tags have a coloured border. */}
       {/* component={false}: no wrapper div, so antd does not override the copied SCSS line-heights. */}
       <AntApp component={false}>
+        <AntdStaticBinder />
+        <UploadBubble />
         <div className="global-app-container">
           {useSidebarLayout && <AppSidebarMenu style={navStyle} />}
           <main className={["main-content", useSidebarLayout && "app-layout-sidebar-only"].filter(Boolean).join(" ")}>

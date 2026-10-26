@@ -34,7 +34,8 @@ Therefore, when you modify a feature or implement a requirement, **you must thin
 
 - **`panel/`** — Web backend (Koa): users, nodes, auth, API. Entry `panel/src/app.ts`, webpack → `production/app.js`.
 - **`daemon/`** — Node worker: instance processes, containers, files, terminal. Entry `daemon/src/app.ts`.
-- **`frontend/`** — Vue 3 + Vite UI. Talks to panel; some features talk directly to daemon to reduce load.
+- **`frontend-react/`** — React 19 + antd 6 + Vite UI, the one that is built and shipped. Talks to panel; some features talk directly to daemon to reduce load.
+- **`frontend/`** — upstream Vue 3 UI, kept as the porting reference only (not built, installed or tested by the root scripts; `npm run frontend:vue` runs it for side-by-side checks).
 - **`common/`** — Shared library published as `mcsmanager-common`. panel/daemon alias it to **source** (`common/src/index.ts`) via tsconfig `paths` + webpack `resolve.alias`, so edits are compiled directly into both apps — no publish step needed, but each app must be rebuilt to pick up changes.
 - **`languages/`** — Root-level i18n JSON shared by all three subprojects (`@languages` alias). Filenames use capital region (`en_US.json`); runtime locale codes are lowercase (`en_us`) — don't mix them up.
 
@@ -67,8 +68,8 @@ Durable project knowledge stays in this file and `docs/`; `openspec/config.yaml`
 ## 4. Commands
 
 - Setup: `./install-dependents.sh` (or `.bat`) — installs all packages and builds `common` (root `npm run preview-build` = build common despite the name). Node.js 22.23.4+ (CI runs 22.x).
-- Dev: `npm run dev` (all three concurrently) or `npm run panel` / `npm run daemon` / `npm run frontend` (each = nodemon → `npm run build` → run `production/app.js`).
-- Build per package: `cd panel|daemon && npm run build` (webpack + ts-loader); `cd frontend && npm run build` (`type-check` + vite); `cd common && npm run build` (tsc → `dist/`).
+- Dev: `npm run dev` (all three concurrently) or `npm run panel` / `npm run daemon` / `npm run frontend` (React UI) (each = nodemon → `npm run build` → run `production/app.js`).
+- Build per package: `cd panel|daemon && npm run build` (webpack + ts-loader); `cd frontend-react && npm run build` (`tsc` type check + vite); `cd common && npm run build` (tsc → `dist/`).
 - **Verification before finishing** — **MANDATORY: after changing code in _any_ module you MUST run the relevant test suite(s) and report the result before finishing. Never claim a change is done without running its tests.** `common`, `daemon`, `panel`, `frontend` all have vitest suites (`cd <module> && npm test`); a `common/` change requires running common + daemon + panel because both apps alias `common/src` directly (see the `mcsmanager-test` skill). Run **all** suites with the one-pass loop in the [`mcsmanager-test`](.agents/skills/mcsmanager-test/SKILL.md) skill. Frontend also: `npm run type-check`, `npm run lint` (eslint `--fix`) — run type-check before lint/test when touching TS types; panel/daemon webpack `npm run build` is their type check.
 - Release package: `./build.sh` / `build.bat` → `production-code/` (`BUNDLE=1` inlines all deps + language packs into a single self-contained `app.js`). Platform binaries (`daemon/lib` PTY / Zip-Tools, see `lib-urls.txt`) are NOT bundled — required at runtime for terminal & compression, see DEVELOPMENT.md. Full build & deploy guide: the project Agent Skill [`mcsmanager-build`](.agents/skills/mcsmanager-build/SKILL.md) (in-repo, tool-neutral `.agents/skills/`, shared by all AI tools; short summary in [`docs/build-production.md`](docs/build-production.md)).
 - i18n tooling: `npm run i18n`, `npm run sort-lang-keys`, `npm run scan-useless-key` (see §6).

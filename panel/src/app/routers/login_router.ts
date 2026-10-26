@@ -10,7 +10,8 @@ import { logger } from "../service/log";
 import { operationLogger } from "../service/operation_logger";
 import { check, checkBanIp, getUserFromCtx, login, logout } from "../service/passport_service";
 import userSystem, { TwoFactorError } from "../service/user_service";
-import { systemConfig } from "../setting";
+import { saveSystemConfig, systemConfig } from "../setting";
+import { isWebAdminEnforced } from "../service/web_admin";
 import { legacyPassport, parsePassportMode } from "mcsmanager-common";
 import { legacyPassportStore } from "../service/johnnykins/passport_client";
 
@@ -93,7 +94,9 @@ router.all(
 
     const settings: Partial<SystemConfig> = {
       businessMode: systemConfig?.businessMode || false,
-      businessId: systemConfig?.businessId || ""
+      businessId: systemConfig?.businessId || "",
+      // Public on purpose: the dev-tools blocker must load before login.
+      devBlocker: systemConfig?.devBlocker || false
     };
     const user = getUserFromCtx(ctx);
     if (user && user.permission >= ROLE.USER) {
@@ -102,6 +105,8 @@ router.all(
       settings.allowChangeCmd = systemConfig?.allowChangeCmd || false;
       settings.panelId = systemConfig?.panelId || "";
       settings.ssoEnabled = systemConfig?.ssoEnabled || false;
+      // Effective value: enforcement only applies once a Web Admin exists.
+      settings.webAdminEnforced = isWebAdminEnforced();
     }
 
     ctx.body = {
@@ -125,11 +130,17 @@ router.all(
       if (!userSystem.validatePassword(passWord))
         throw new Error($t("TXT_CODE_router.user.passwordCheck"));
       logger.info($t("TXT_CODE_router.login.init", { userName }));
+      // Johnnykins fork: the installing user is the Web Admin, and Web Admin
+      // enforcement starts on for new panels (service/web_admin.ts).
       await userSystem.create({
         userName,
         passWord,
-        permission: 10
+        permission: ROLE.WEBADMIN
       });
+      if (systemConfig) {
+        systemConfig.webAdminEnforced = true;
+        saveSystemConfig(systemConfig);
+      }
       operationLogger.log("user_create", {
         operator_ip: ctx.ip,
         operator_name: userName,

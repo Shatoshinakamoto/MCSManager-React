@@ -22,13 +22,17 @@ import userSystem from "../service/user_service";
 import { saveSystemConfig, systemConfig } from "../setting";
 import { legacyPassport, parsePassportMode } from "mcsmanager-common";
 import { checkFileName } from "../utils/safe";
+import net from "net";
+import { decodeDaemonServerId } from "../middleware/additional_security";
+import { getUserFromCtx } from "../service/passport_service";
+import { isWebAdmin } from "../service/web_admin";
 import { checkBusinessMode } from "../version";
 
 const router = new Router({ prefix: "/overview" });
 
 // [Top-level Permission]
 // Get panel configuration items
-router.get("/setting", permission({ level: ROLE.ADMIN }), async (ctx) => {
+router.get("/setting", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
   if (!systemConfig) {
     ctx.body = systemConfig;
     return;
@@ -55,9 +59,81 @@ router.get("/setting", permission({ level: ROLE.ADMIN }), async (ctx) => {
   };
 });
 
+function boundedInt(value: unknown, min: number, max: number, name: string) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < min || n > max)
+    throw new Error(`${name} must be a whole number from ${min} to ${max}`);
+  return n;
+}
+
+/**
+ * Validates and applies the Additional Security fields.
+ * SECURITY: every value is type-checked; origins must be exact http(s)
+ * origins (no wildcards, CWE-942) and daemon allow-list entries must be IPs.
+ */
+function applyAdditionalSecurity(ctx: Router.RouterContext, config: Partial<SystemConfig>) {
+  if (!systemConfig) return;
+  if (config.cors != null) systemConfig.cors = Boolean(config.cors);
+  if (config.origin != null) {
+    const origins = String(config.origin)
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    for (const o of origins) {
+      let url: URL;
+      try {
+        url = new URL(o);
+      } catch {
+        throw new Error(`Invalid CORS origin: ${o}`);
+      }
+      if (!["http:", "https:"].includes(url.protocol) || url.origin !== o)
+        throw new Error(`CORS origin must be an exact http(s) origin such as https://example.com: ${o}`);
+    }
+    systemConfig.origin = origins.join(",");
+  }
+  if (config.helmet != null) systemConfig.helmet = Boolean(config.helmet);
+  if (config.rateLimiter != null) systemConfig.rateLimiter = Boolean(config.rateLimiter);
+  if (config.rateLimitMax != null)
+    systemConfig.rateLimitMax = boundedInt(config.rateLimitMax, 1, 100000, "rateLimitMax");
+  if (config.rateLimitDuration != null)
+    systemConfig.rateLimitDuration = boundedInt(
+      config.rateLimitDuration,
+      1000,
+      86400000,
+      "rateLimitDuration"
+    );
+  if (config.daemonServerIDs != null) {
+    if (!Array.isArray(config.daemonServerIDs)) throw new Error("daemonServerIDs must be a list");
+    const ids = config.daemonServerIDs.map((v) => String(v).trim()).filter(Boolean);
+    for (const id of ids) {
+      if (!net.isIP(decodeDaemonServerId(id)))
+        throw new Error(`Daemon allow-list entries must be IP addresses: ${id}`);
+    }
+    systemConfig.daemonServerIDs = ids;
+  }
+  // Takes effect on the next panel start (the stack is locked once, at startup).
+  if (config.pandorasWall != null) systemConfig.pandorasWall = Boolean(config.pandorasWall);
+  if (config.devBlocker != null) systemConfig.devBlocker = Boolean(config.devBlocker);
+  if (config.sessionMaxAgeMinutes != null)
+    systemConfig.sessionMaxAgeMinutes = boundedInt(
+      config.sessionMaxAgeMinutes,
+      0,
+      10080,
+      "sessionMaxAgeMinutes"
+    );
+  if (config.webAdminEnforced != null) {
+    const enforce = Boolean(config.webAdminEnforced);
+    // SECURITY: only a Web Admin may switch enforcement on, so it can never
+    // lock every account out of the Web Admin pages.
+    if (enforce && !systemConfig.webAdminEnforced && !isWebAdmin(getUserFromCtx(ctx)))
+      throw new Error("Only a Web Admin can turn on Web Admin enforcement.");
+    systemConfig.webAdminEnforced = enforce;
+  }
+}
+
 // [Top-level Permission]
 // Update panel configuration items
-router.put("/setting", permission({ level: ROLE.ADMIN }), async (ctx) => {
+router.put("/setting", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
   const config = ctx.request.body as Partial<SystemConfig>;
   if (config && systemConfig) {
     // Snapshot for the audit log (masked diff is computed after all mutations)
@@ -94,6 +170,9 @@ router.put("/setting", permission({ level: ROLE.ADMIN }), async (ctx) => {
     if (config.registerCode != null) systemConfig.registerCode = String(config.registerCode);
     if (config.panelId != null) systemConfig.panelId = String(config.panelId);
     if (config.enableApiKey != null) systemConfig.enableApiKey = config.enableApiKey;
+
+    // Additional Security (docs/configuration/panel-additional-security.md)
+    applyAdditionalSecurity(ctx, config);
 
     // Update source (panel self-update manifest URLs)
     if (config.updateSourceUrl != null)
@@ -384,7 +463,7 @@ router.get("/layout", async (ctx) => {
 
 // [Top-level Permission]
 // Set frontend layout
-router.post("/layout", permission({ level: ROLE.ADMIN }), async (ctx) => {
+router.post("/layout", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
   const config = ctx.request.body;
   setFrontendLayoutConfig(config);
   ctx.body = true;
@@ -392,16 +471,42 @@ router.post("/layout", permission({ level: ROLE.ADMIN }), async (ctx) => {
 
 // [Top-level Permission]
 // Reset frontend layout
-router.delete("/layout", permission({ level: ROLE.ADMIN }), async (ctx) => {
+router.delete("/layout", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
   resetFrontendLayoutConfig();
   ctx.body = true;
 });
 
-const ALLOWED_ASSET_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"]);
+const ALLOWED_ASSET_EXTENSIONS = new Set([
+  ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
+  // Music card (audio is played by the browser, never executed).
+  ".mp3", ".ogg", ".wav", ".m4a", ".flac", ".aac"
+]);
+const MAX_MARKET_FILE_BYTES = 20 * 1024 * 1024;
+/** Legacy plugin card files. Served as inert text (see app.ts), run only inside the sandboxed plugin host. */
+const PLUGIN_HTML_EXTENSIONS = new Set([".html", ".htm"]);
+const MAX_PLUGIN_HTML_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Accept a JSON upload only if it is a market template file
+ * (`{ packages: [...] }`). Anything else, including HTML disguised as .json,
+ * is refused before it is stored under the panel's public folder (CWE-434).
+ */
+async function assertMarketTemplateFile(filePath: string) {
+  const stat = await fs.stat(filePath);
+  if (stat.size > MAX_MARKET_FILE_BYTES) throw new Error("Market template file is too large");
+  let data: unknown;
+  try {
+    data = JSON.parse(await fs.readFile(filePath, "utf-8"));
+  } catch {
+    throw new Error("Only image files or a valid market template (.json) can be uploaded");
+  }
+  if (!data || typeof data !== "object" || !Array.isArray((data as { packages?: unknown }).packages))
+    throw new Error("The JSON file is not a market template (missing a packages list)");
+}
 
 // [Top-level Permission]
 // Upload file to asserts directory, only administrator can upload
-router.post("/upload_assets", permission({ level: ROLE.ADMIN }), async (ctx) => {
+router.post("/upload_assets", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
   let files = ctx.request.files?.file;
   let tmpFile: formidable.File | undefined;
   if (Array.isArray(files)) {
@@ -414,11 +519,28 @@ router.post("/upload_assets", permission({ level: ROLE.ADMIN }), async (ctx) => 
     if (!tmpFile.filepath || !fs.existsSync(tmpFile.filepath))
       throw new Error($t("TXT_CODE_1a499109"));
     // SECURITY: these files are served from the panel's own origin, so only
-    // raster images are accepted (upstream took any extension; an .html or
-    // .svg upload would run script as the panel, CWE-434/CWE-79). The UI only
-    // uses this for the logo and background image.
-    const ext = path.extname(tmpFile.originalFilename || "").toLowerCase();
-    if (!ALLOWED_ASSET_EXTENSIONS.has(ext)) throw new Error("Only image files can be uploaded (png, jpg, jpeg, gif, webp, ico)");
+    // raster images, audio, market template files and plugin HTML (served as text) are accepted (upstream took any
+    // extension; an .html or .svg upload would run script as the panel,
+    // CWE-434/CWE-79). The UI uses this for the logo, the background image,
+    // the image and carousel cards, the music card and the market editor's "Save to panel".
+    let ext = path.extname(tmpFile.originalFilename || "").toLowerCase();
+    // The market editor posts a Blob, which arrives with no usable extension.
+    if (ext === ".json" || ext === "") {
+      await assertMarketTemplateFile(tmpFile.filepath);
+      ext = ".json";
+    }
+    // HTML plugins: the panel never serves these as HTML. app.ts sends every
+    // .html/.htm under upload_files as text/plain with nosniff and a CSP
+    // sandbox, so opening one directly cannot run script as the panel; only
+    // the plugin card's sandboxed host frame runs them (CWE-434, CWE-79).
+    if (PLUGIN_HTML_EXTENSIONS.has(ext)) {
+      if ((await fs.stat(tmpFile.filepath)).size > MAX_PLUGIN_HTML_BYTES) throw new Error("Plugin HTML file is too large (2 MB max)");
+      ext = ".html";
+    }
+    if (!ALLOWED_ASSET_EXTENSIONS.has(ext) && ext !== ".json" && ext !== ".html")
+      throw new Error(
+        "Only image, audio, plugin HTML or market template files can be uploaded (png, jpg, jpeg, gif, webp, ico, mp3, ogg, wav, m4a, flac, aac, html, json)"
+      );
     const newFileName = v4() + ext;
     if (!checkFileName(newFileName)) throw new Error("Access denied: Malformed file name");
     const saveDirPath = path.join(process.cwd(), SAVE_DIR_PATH);

@@ -14,7 +14,7 @@
  */
 import { CheckCircleOutlined, LoadingOutlined, LockOutlined, LoginOutlined, UserOutlined } from "@ant-design/icons";
 import { App, Button, Divider, Input, Typography } from "antd";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import CardPanel from "@/components/CardPanel";
 import { t } from "@/lang/i18n";
@@ -40,6 +40,16 @@ export default function LoginCard({ card }: { card?: LayoutCard }) {
   const [is2Fa, setIs2Fa] = useState(false);
   const [loginInfo, setLoginInfo] = useState("");
   const [sso, setSso] = useState<SsoPublicConfig | null>(null);
+  // The route guard leaves /login as soon as the user is known; the delayed
+  // navigate below must not fire after that, or it pulls a user who already
+  // moved on back to the start page.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const title = card?.title || t("TXT_CODE_3ba5ad");
   const handleSsoLogin = () => window.location.assign(SSO_AUTHORIZE_URL);
@@ -96,7 +106,7 @@ export default function LoginCard({ card }: { card?: LayoutCard }) {
         setLoginStep(2);
         await sleep(1000);
         setLoginStep(3);
-        navigate(isAdminUser(useAppState.getState().userInfo) ? "/" : "/customer");
+        if (mounted.current) navigate(isAdminUser(useAppState.getState().userInfo) ? "/" : "/customer");
       } catch (err) {
         console.error(err);
         setLoginStep(0);
@@ -154,7 +164,7 @@ export default function LoginCard({ card }: { card?: LayoutCard }) {
                   <div className="mcsmanager-link">
                     {loginInfo && (
                       // SECURITY: sanitized by DOMPurify allow-list in markdownToHTML (CWE-79).
-                      <div className="global-markdown-html" dangerouslySetInnerHTML={{ __html: markdownToHTML(loginInfo) }} />
+                      <div className="global-markdown-html" style={{ marginBottom: "1rem" }} dangerouslySetInnerHTML={{ __html: markdownToHTML(loginInfo) }} />
                     )}
                     Powered by{" "}
                     <a href="https://mcsmanager.com" target="_blank" rel="noopener noreferrer">

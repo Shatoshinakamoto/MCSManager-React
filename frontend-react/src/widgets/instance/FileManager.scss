@@ -1,0 +1,76 @@
+/* Port of FileManager.vue scoped styles, scoped under .InstanceFileManager. */
+.InstanceFileManager {
+  .search-input {
+    transition: all 0.4s;
+    text-align: center;
+    width: 50%;
+  }
+
+  /* antd 6 card tabs are 48px tall; match the classic panel's 40px. */
+  .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+    padding: 8px 16px;
+    line-height: 22px;
+  }
+  .ant-tabs-card > .ant-tabs-nav .ant-tabs-nav-add {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0 8px;
+  }
+
+  .file-name {
+    color: inherit;
+    /* antd 6 buttons put an 8px gap between children; the icon span has its own margin. */
+    gap: 0;
+
+    &:hover {
+      color: #1677ff;
+    }
+  }
+
+  @media (max-width: 992px) {
+    .search-input {
+      transition: all 0.4s;
+      text-align: center;
+      width: 100% !important;
+    }
+  }
+
+  .search-input:hover {
+    width: 100%;
+  }
+
+  .file-breadcrumbs {
+    border: 1px solid var(--color-gray-5);
+    border-radius: 6px;
+    flex: 1;
+
+    .file-breadcrumbs-item {
+      padding: 8px;
+      cursor: pointer;
+      display: inline-block;
+      transition: all 0.4s;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .file-breadcrumbs-item:hover {
+      background-color: var(--color-gray-4);
+    }
+  }
+
+  .file-breadcrumbs-input {
+    flex: 1;
+    border-radius: 6px;
+  }
+}
+
+/* The permission dialog renders outside the card. */
+@media (max-width: 350px) {
+  .permission {
+    flex-direction: column;
+
+    .son {
+      width: 100%;
+    }
+  }
+}

@@ -19,5 +19,5 @@
       "@languages/*": ["../languages/*"]
     }
   },
-  "include": ["src", "vite.config.ts", "vitest.setup.ts", "../common/global.d.ts"]
+  "include": ["src", "e2e", "playwright.config.ts", "vite.config.ts", "vitest.setup.ts", "../common/global.d.ts"]
 }

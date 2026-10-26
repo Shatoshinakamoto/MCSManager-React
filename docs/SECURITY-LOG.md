@@ -2,6 +2,117 @@
 
 Entries follow the template in the project's secure development standards. Newest first.
 
+## 2026-10-25 - Session token out of URLs; SSO token no longer logged
+- **Type:** hardening
+- **CVE / CWE / advisory:** none; CWE-598, CWE-208, CWE-532
+- **Severity:** not CVSS-scored; low to medium by assessment (needs access to logs or browser history).
+- **Affected:** `panel/src/app/middleware/permission.ts`, `panel/src/app/routers/instance_exchange_router.ts`, `frontend-react/src/services/apiService.ts`.
+- **What changed:**
+  - The React UI sends the session token in the `X-MCSM-Token` request header instead of the `?token=` query parameter, so it no longer lands in proxy, access or browser logs (CWE-598, ASVS V3.1.1).
+  - The panel reads the header first and falls back to `?token=` for existing scripts. Both are compared with `crypto.timingSafeEqual` through `sessionTokenMatches()`, which refuses a missing or empty token on either side (CWE-208).
+  - The SSO login route no longer writes the one-time token to the panel log (CWE-532, NIST AU-9). Upstream logged it.
+- **Why it is secure now:** credentials travel only in headers from the UI; comparison time does not depend on how much of the token matches.
+- **Residual risk:**
+  - TODO(security): `?token=` is still accepted for compatibility. Remove it in a later release once scripts have moved; the [upgrade guide](upgrade-guide.md) asks them to.
+  - Daemon file upload and download links still carry upstream's one-time transfer password in the URL path. That password is issued per transfer and expires quickly; the session token is not in those links.
+- **Verification:** panel test `session_token.test.ts` (header, query fallback, empty and length-mismatch refusal); panel tests 65 passing; terminal and file pages checked in the browser with no token in any request URL; the browser smoke test asserts the same on every main page.
+
+## 2026-10-25 - Legacy plugin API through a sandboxed host
+- **Type:** feature with hardening
+- **CVE / CWE / advisory:** none; CWE-94, CWE-829, CWE-285, CWE-79, CWE-434, CWE-770, CWE-22
+- **Severity:** not CVSS-scored; the design keeps third-party plugin code outside the panel origin.
+- **Affected:** `frontend-react/public/plugin-host.html`, `frontend-react/src/tools/legacyPluginBridge.ts`, `frontend-react/src/widgets/others/PluginCard.tsx`, `frontend-react/src/services/apiService.ts` (`rawPanelGet`), `panel/src/app/middleware/additional_security.ts`, `panel/src/app.ts`, `panel/src/app/routers/settings_router.ts`.
+- **What changed:**
+  - Old plugins run in `plugin-host.html`, loaded in an iframe sandboxed without `allow-same-origin`. The panel also sends that page a CSP `sandbox` directive, so it is an opaque origin even when opened directly. Its CSP allows inline and http(s) scripts, never `'unsafe-eval'`, and `frame-ancestors 'self'`. The panel page's own CSP is unchanged.
+  - The host recreates `$axios`, `$theme`, `$realWindow` (the frame's own window), `$onMounted`, `$onUnmounted`. `$axios` to other sites is a credential-less fetch; to the panel it becomes a message to the plugin card.
+  - The card accepts messages only from its own frame (`event.source`, origin `"null"`). It answers 403 unless the admin enabled panel data for the card; then only GET on six read-only endpoints, after path normalisation, with token/API-key parameters dropped, parameters capped, 30 requests per 10 s. Requests run as the viewing user, so the panel's own permission checks still apply.
+  - Plugin `.html` uploads are accepted again (2 MB cap). All markup and script files under `upload_files` are served as inert text in a CSP sandbox, which also neutralises HTML uploaded by older versions.
+- **Why it is secure now:** plugin code cannot reach panel cookies, storage, DOM or navigation (ASVS V14.4, V5.3); panel data access is default-deny, least privilege and read-only (NIST AC-3, AC-6).
+- **Residual risk:**
+  - SECURITY-WARNING: with panel data on, a plugin can read instance and daemon details visible to the viewer and send them to its own server. The setting text warns about this; turn it on only for trusted plugins.
+  - SECURITY-WARNING: plugins that need write access or panel internals (`$realWindow` as the panel window) no longer work. That is deliberate.
+- **Verification:** an old-style test plugin rendered with theme, `$onMounted`, external fetch and (when allowed) `/api/overview`; from inside it, cookies, `localStorage`, `parent.document`, `eval`, top navigation, a POST, `/api/auth/overview` and two path-traversal variants were all refused. Direct open of an uploaded `.html` returned `text/plain` with `sandbox`. React tests 63 passing, panel tests 63 passing.
+
+## 2026-10-25 - Phase 4: decorative cards and React cutover
+- **Type:** hardening (port with fixes)
+- **CVE / CWE / advisory:** none; CWE-94, CWE-829, CWE-1021, CWE-79, CWE-601, CWE-95, CWE-540
+- **Severity:** not CVSS-scored; high by assessment for upstream's plugin card, which ran any page's scripts in the panel with the user's session.
+- **Affected:** `frontend-react/src/widgets/others/*`, `frontend-react/src/tools/safeUrl.ts`, `panel/src/app/middleware/additional_security.ts`, `panel/src/app/routers/settings_router.ts`, `build.sh`, `build.bat`.
+- **What changed:**
+  - Plugin card: upstream fetched a URL, inserted the HTML with `innerHTML` and ran its scripts through a proxy sandbox that still exposed `window` and an authenticated axios. Now the page loads in an `<iframe sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox">` with no `allow-same-origin`, `referrerPolicy="no-referrer"`, absolute http(s) URLs only. It gets the theme by `postMessage` and nothing else. Plugins that relied on the panel's `window` or API client no longer work.
+  - Iframe card: sandboxed without `allow-top-navigation`, so an embedded page cannot replace the panel.
+  - Image, carousel and link cards: URLs pass `safeHttpUrl` before they are saved or rendered; links open with `noopener,noreferrer`. Text card renders through the existing Markdown sanitiser.
+  - Asset upload allow-list gains audio types; HTML and other types are still refused.
+  - CSP: the `'unsafe-eval'` fallback for the Vue build is removed (closes the TODO(security) of the tamper-check entry below).
+  - Build scripts keep the UI sourcemaps out of the served web root.
+- **Why it is secure now:** third-party card content runs in an opaque origin with no access to the panel's DOM, cookies or storage (ASVS V14.4, V5.3); untrusted URLs are allow-listed by scheme; the CSP no longer permits string-to-code evaluation.
+- **Residual risk:**
+  - SECURITY-WARNING: the iframe card keeps `allow-same-origin` (needed by most embedded sites). Do not point it at a page on the panel's own origin that you do not control.
+  - SECURITY-WARNING: `frame-src` and `img-src` still allow any http(s) host, because layout cards embed external content by design.
+- **Verification:** React tests 44 passing (26 new); panel CSP test passing; browser run against the panel: `javascript:` slides and links dropped, 0 alerts, markdown `onerror` stripped, plugin frame cannot read cookies or the parent; `build.sh` output starts, passes the tamper check, sends `script-src 'self'` with no eval, and returns 404 for sourcemaps.
+
+## 2026-10-25 - Fork features: tamper check, dev-tools blocker, CSP for the served UI
+- **Type:** hardening (ported from the Johnnykins fork)
+- **CVE / CWE / advisory:** none; CWE-354, CWE-79 (defence in depth), CWE-95 (residual)
+- **Severity:** not CVSS-scored; informational to low.
+- **Affected:** `common/src/tamper_check.ts`, `common/tamper_proof_plugin.js`, `common/src/upgrade.ts`, panel and daemon `app.ts`, `frontend-react/src/tools/devBlocker.ts`, `panel/src/app/middleware/additional_security.ts`.
+- **What changed:**
+  - Build integrity check: SHA-256 of `app.js` and `app.js.map` written at build, compared at startup; mismatch or missing hashes stop the process, except a `--dev` run under the fork's conditions. The self-updater refreshes the hashes after applying a package.
+  - Dev-tools blocker, off by default. Libraries pinned and bundled instead of the fork's unpinned jsDelivr script; the library's third-party fallback redirect (which carried the panel host name) replaced with `about:blank`.
+  - CSP `script-src 'self'` plus SHA-256 hashes of the inline scripts in the served `index.html`; inline handlers only by hash with `'unsafe-hashes'`.
+- **Why it is secure now:** integrity of the deployed bundle is checked before it serves requests (NIST SI-7, detection only); the CSP blocks injected inline script even if an XSS sink is found (ASVS V14.4.3).
+- **Residual risk:**
+  - SECURITY-WARNING: the hash files sit beside the bundle, so an attacker with write access can update both. Install-folder permissions are the real control.
+  - SECURITY-WARNING: the dev-tools blocker deters casual inspection only and is not a security boundary.
+  - SECURITY-WARNING: frontends without `<meta name="mcsm-csp" content="strict">` (the upstream Vue build) get `'unsafe-eval'`, because vue-i18n compiles messages at runtime. Resolved: removed at the Phase 4 cutover (entry above).
+- **Verification:** `common` tests (6 new, all passing); manual runs: an edited `app.js` and a missing `app_map-hash.txt` each stop the panel with exit code 1; the React build loads under the strict CSP with no violations; the Vue build loads with no CSP violations.
+
+## 2026-10-25 - Fork features: Web Admin role and Additional Security middleware
+- **Type:** hardening (ported from the Johnnykins fork, with fixes)
+- **CVE / CWE / advisory:** none; CWE-269, CWE-613, CWE-942, CWE-290, CWE-348, CWE-770
+- **Severity:** not CVSS-scored; medium by assessment for the fork's IP-header bypass that this port does not repeat.
+- **Affected:** `panel/src/app/service/web_admin.ts`, `middleware/permission.ts`, `middleware/additional_security.ts`, `routers/*` (route levels), `routers/settings_router.ts` (validation), `service/passport_service.ts`.
+- **What changed:**
+  - `ROLE.WEBADMIN = 20`. Panel-wide routes need it once `webAdminEnforced` is on; until then it maps to `ROLE.ADMIN`. Unknown permission numbers are refused; only Web Admins grant the role or manage Web Admins (bootstrap: any admin while none exists); the last Web Admin cannot be removed; only a Web Admin can turn enforcement on.
+  - Security headers via `koa-helmet`; CORS allow-list of exact origins via `@koa/cors`; per-IP `/api/` limiter via `koa-ratelimit` with an IP allow-list; absolute login lifetime bound to the login IP; PandorasWall freezes the middleware list after startup.
+  - Fork bug not repeated: the fork took the client IP from `X-Forwarded-For`, `CF-Connecting-IP` or `True-Client-IP` on every request, so any client could claim a whitelisted daemon address and skip the limiter. The port uses `ctx.ip` (proxy header only in reverse-proxy mode).
+- **Why it is secure now:** least privilege for panel-wide actions (NIST AC-6), server-side authorisation (ASVS V4.1), session timeout (ASVS V3.3), input validation on every new setting (ASVS V5.1).
+- **Residual risk:** the limiter's memory store is per process and resets on restart. Plain admins keep instance management by design.
+- **Verification:** live API run with a Web Admin and a plain admin: plain admin refused on settings (403) and on granting Web Admin, allowed on overview; enforcement switch refused for the plain admin; limiter returned 429 after 5 requests at max 5; CORS echoed only the listed origin; PandorasWall logged the lock; invalid origin and allow-list values rejected. UI: plain admin's menu hides Users and Settings and `/settings` goes to 404.
+
+## 2026-10-25 - React Phase 3 port: admin and instance-creation pages
+- **Type:** patch
+- **CVE / CWE / advisory:** none; CWE-79, CWE-22, CWE-434, CWE-549, CWE-201
+- **Severity:** not CVSS-scored; low to medium by assessment.
+- **Affected:** upstream `frontend/` Docker image pages, market, users page; upstream `panel/src/app/routers/instance_admin_router.ts` local market path.
+- **What changed:**
+  - Docker image and container details render as text; upstream set `innerHTML` from JSON returned by the Docker host (CWE-79).
+  - Market package images and links pass `safeHttpUrl` (http(s) or same-origin path only); others show a dash (CWE-79 via `javascript:` URLs).
+  - Market templates uploaded through `upload_assets` are parsed, checked for `{ packages: [] }` and capped at 20 MB before they are saved as `.json` (CWE-434).
+  - A local market path is resolved and must stay inside `public/upload_files` (CWE-22).
+  - The market editor's link import uses `credentials: "omit"` so panel cookies never go to the template host (CWE-201).
+  - Users page new-password field is masked (CWE-549).
+- **Why it is secure now:** output encoding and URL allowlists (ASVS V5.3), file upload validation (OWASP File Upload Cheat Sheet), path confinement (ASVS V12.3).
+- **Residual risk:** `npm audit` on the panel reports the same findings as upstream `ad4f903`, all in existing dependencies: production `follow-redirects` (high), `zod` via `koa-body` (high), `uuid` via `koa-session` (moderate); dev-only `vitest`/`esbuild`/`tinypool` chain. The four packages added in this port add none. TODO(security): update these with upstream.
+- **Verification:** `npm audit` run on 2026-10-25 against this lockfile and against upstream's (identical counts: 12 total, 5 production); XSS probes with a `javascript:` image and HTML in descriptions fired no script; Playwright runs of market install, quick start and editor publish.
+
+## 2026-10-25 - React instance console: hardening during the Phase 2 port
+- **Type:** patch
+- **CVE / CWE / advisory:** none; CWE-201, CWE-79, CWE-549, CWE-20, CWE-1022, CWE-918 (residual)
+- **Severity:** not CVSS-scored; low to medium by assessment.
+- **Affected:** upstream `frontend/` instance console behaviours reproduced by the port.
+- **What changed:**
+  - Session token sent only to same-origin (panel) URLs. Upstream also appended it to direct daemon upload URLs, handing it to a second origin (CWE-201). `src/services/apiService.ts`.
+  - Translation strings with markup render through `src/components/SafeHtml.tsx` (DOMParser plus tag allowlist, http(s) links only) instead of `v-html` (CWE-79).
+  - RCON password shown in a masked field (CWE-549).
+  - File manager tabs and mod manager settings read from localStorage are shape-checked, with a one-day expiry for tabs (CWE-20).
+  - External links (mod pages, file downloads) open with `noopener noreferrer` and encoded URLs (CWE-1022); mod icons load only from http(s) URLs.
+  - Download-from-URL dialog accepts http(s) only. The daemon's `checkSafeUrl` rejects IP literals, local names and private DNS answers.
+  - Editing a schedule deletes and re-creates it as upstream does; if the re-create fails the original task is registered again, so an edit can no longer silently delete the task.
+- **Why it is secure now:** output encoding and allowlists (ASVS V5.3), credentials limited to their own origin (ASVS V3.4), untrusted client storage validated (ASVS V5.1).
+- **Residual risk:** SECURITY-WARNING: the daemon resolves the URL for its SSRF check and again for the fetch, so DNS rebinding can still reach a private address (CWE-367/CWE-918). TODO(security): pin the checked address for the fetch.
+- **Verification:** `npx tsc --noEmit`, `npm audit` (0 vulnerabilities, 2026-10-25), Playwright runs of the file manager, schedules, server config and mod manager against a live panel and daemon.
+
 ## 2026-10-25 - Upstream: any file type accepted by the asset upload (fixed in port)
 - **Type:** patch
 - **CVE / CWE / advisory:** none; CWE-434, CWE-79

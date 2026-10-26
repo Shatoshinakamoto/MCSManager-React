@@ -26,6 +26,13 @@ export {
 export { arrayUnique } from "./array";
 
 export {
+  checkIntegrity,
+  hasIntegrityHashes,
+  refreshIntegrityHashes,
+  verifyIntegrityOrExit
+} from "./tamper_check";
+
+export {
   applyUpgradePackage,
   compareVersions,
   DEFAULT_UPDATE_SOURCE_URL,

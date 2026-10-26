@@ -308,7 +308,7 @@ export default function InstanceList({ card }: WidgetProps) {
     try {
       const ok = await fn({ data: selectedInstance.map((item) => ({ instanceUuid: item.instanceUuid, daemonId: currentRemoteNode?.uuid ?? "" })) });
       if (ok) {
-        notification.success({ message: msg, description: t("TXT_CODE_1514d08f") });
+        notification.success({ title: msg, description: t("TXT_CODE_1514d08f") });
         exitMultipleMode();
         await initInstancesData();
       }
@@ -342,7 +342,7 @@ export default function InstanceList({ card }: WidgetProps) {
           const res = await batchDelete({ params: { daemonId: currentRemoteNode?.uuid ?? "" }, data: { uuids, deleteFile } });
           if (res) {
             exitMultipleMode();
-            notification.success({ message: t("TXT_CODE_c3c06801"), description: t("TXT_CODE_50075e02") });
+            notification.success({ title: t("TXT_CODE_c3c06801"), description: t("TXT_CODE_50075e02") });
             await initInstancesData(true);
           }
         } catch (err) {

@@ -1,6 +1,7 @@
 /**
  * Boot sequence, same order as upstream main.ts: panel status -> language ->
  * layout -> lazy-load and mount the app, with progress on the loading screen.
+ * The fork's dev-tools blocker, when switched on, starts right after status.
  */
 import { initI18n, t } from "@/lang/i18n";
 import { useAppState } from "@/stores/appState";
@@ -22,6 +23,11 @@ async function initApp() {
   try {
     setLoadingTitle("Initializing Application...");
     await useAppState.getState().updatePanelStatus();
+    // Johnnykins fork: optional dev-tools blocker (tools/devBlocker.ts).
+    if (useAppState.getState().settings.devBlocker) {
+      const { enableDevBlocker } = await import("@/tools/devBlocker");
+      await enableDevBlocker();
+    }
     setLoadingTitle("Initializing Language...");
     await initI18n(useAppState.getState().language);
     setLoadingTitle("Initializing Layout...");

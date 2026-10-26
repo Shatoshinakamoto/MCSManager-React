@@ -15,7 +15,7 @@ export function isUploadRequest(ctx: Context) {
 export async function preCheckMiddleware(ctx: Context, next: () => Promise<void>) {
   if (isUploadRequest(ctx)) {
     const user = getUserFromCtx(ctx);
-    const isAdmin = user?.permission === ROLE.ADMIN;
+    const isAdmin = (user?.permission ?? 0) >= ROLE.ADMIN;
     if (!isAdmin) throw new Error("Access denied: Invalid multipart/form-data request!");
   }
   return await next();

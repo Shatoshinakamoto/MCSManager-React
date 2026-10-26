@@ -1,0 +1,79 @@
+/* Port of ModManager.vue scoped styles, scoped under .InstanceModManager. */
+.InstanceModManager {
+  .containerWrapper {
+    overflow: hidden;
+  }
+
+  .mod-manager-tabs > .ant-tabs-nav {
+    margin-bottom: 0;
+    padding: 0 20px;
+
+    /* antd 6 line tabs are 53px tall; the classic panel's are 46px. */
+    .ant-tabs-tab {
+      padding: 12px 0;
+      line-height: 22px;
+    }
+  }
+
+  @media (max-width: 585px) {
+    .menus-item-center {
+      width: auto !important;
+      flex: 1 !important;
+      justify-content: center !important;
+    }
+    .menus-item-left,
+    .menus-item-right {
+      display: flex !important;
+      flex: 0 0 auto !important;
+    }
+  }
+
+  .search-form {
+    margin-bottom: 20px;
+  }
+  .search-form .ant-form-item {
+    margin-bottom: 12px;
+  }
+
+  .mod-manager-alert {
+    padding: 10px 18px !important;
+  }
+
+  .mod-manager-alert .ant-alert-content {
+    text-align: left !important;
+  }
+
+  .search-form .ant-input,
+  .search-form .ant-select-selection-item,
+  .search-form .ant-select-selection-placeholder {
+    text-align: left !important;
+  }
+
+  .search-form .ant-form-item-label {
+    text-align: left;
+  }
+
+  .drag-upload-mask {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(128, 128, 128, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 100;
+    border: 2px dashed var(--ant-primary-color);
+    border-radius: 8px;
+    pointer-events: none;
+  }
+}
+
+/* Row action icons: the classic panel renders these glyphs at 18px; antd 6 caps them at 16px. */
+.InstanceModManager .ant-table .ant-btn-sm .anticon svg {
+  width: 18px;
+  height: 18px;
+}

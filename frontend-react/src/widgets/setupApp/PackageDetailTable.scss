@@ -1,0 +1,60 @@
+/* Styles for PackageDetailTable (copied from the upstream scoped styles). */
+.package-table-image-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.package-table-avatar {
+  border-radius: 4px;
+  cursor: pointer;
+  img {
+    object-fit: cover;
+  }
+}
+.package-table-image-popover {
+  padding: 4px;
+}
+.package-table-image-popover-img {
+  width: 500px;
+  max-width: 80vw;
+  height: auto;
+  max-height: 500px;
+  object-fit: contain;
+  display: block;
+  border-radius: 4px;
+}
+.package-table-thumb-placeholder {
+  color: var(--color-gray-6);
+  font-size: 12px;
+}
+.package-table-description-cell {
+  font-size: 12px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+.package-docker-optional-action {
+  display: inline-flex;
+}
+.package-docker-optional-help-icon {
+  color: var(--color-gray-6);
+  cursor: help;
+  font-size: 14px;
+}
+.config-modal-body {
+  max-height: 70vh;
+  overflow: auto;
+}
+.config-modal-json {
+  margin: 0;
+  padding: 12px;
+  background: var(--color-gray-2);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+  color: var(--color-gray-12);
+}

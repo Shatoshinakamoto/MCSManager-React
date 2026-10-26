@@ -6,7 +6,7 @@ import koaBody, { HttpMethodEnum } from "koa-body";
 import compress from "koa-compress";
 import session from "koa-session";
 import koaStatic from "koa-static";
-import { removeTrail } from "mcsmanager-common";
+import { removeTrail, verifyIntegrityOrExit } from "mcsmanager-common";
 import open from "open";
 import os from "os";
 import path from "path";
@@ -16,6 +16,14 @@ import Storage from "./app/common/storage/sys_storage";
 import { DataPlaneMode } from "./app/entity/setting";
 import { $t } from "./app/i18n";
 import { mountRouters } from "./app/index";
+import {
+  apiRateLimiter,
+  corsAllowList,
+  isInertUpload,
+  lockMiddlewareStack,
+  securityHeaders,
+  sessionLifetime
+} from "./app/middleware/additional_security";
 import { preCheckMiddleware } from "./app/middleware/precheck";
 import { middleware as protocolMiddleware } from "./app/middleware/protocol";
 import { logger } from "./app/service/log";
@@ -144,6 +152,13 @@ _  /  / / / /___  ____/ /_  /  / / / /_/ /_  / / / /_/ /_  /_/ //  __/  /
   // Initialize services
   await SystemUser.initialize();
   await SystemRemoteService.initialize();
+  // Johnnykins tamper check (common/src/tamper_check.ts). The fork's --dev
+  // bypass only applies to a panel with at most one user and one daemon.
+  verifyIntegrityOrExit({
+    name: "panel",
+    logger,
+    devAllowed: SystemUser.objects.size <= 1 && SystemRemoteService.services.size <= 1
+  });
 
   const app = new Koa({
     proxy: systemConfig?.reverseProxyMode || false,
@@ -155,6 +170,13 @@ _  /  / / / /___  ____/ /_  /  / / / /_/ /_  / / / /_/ /_  /_/ //  __/  /
     // Block all Koa framework level events
     // When Koa is attacked by a short connection flood, it is easy for error messages to swipe the screen, which may indirectly affect the operation of some applications
   });
+
+  // Additional Security (docs/configuration/panel-additional-security.md):
+  // headers, CORS and the rate limiter run first so they also cover the
+  // proxy data plane below. Each is a no-op while its switch is off.
+  app.use(securityHeaders());
+  app.use(corsAllowList());
+  app.use(apiRateLimiter());
 
   // Early proxy data-plane gate: must run BEFORE koa-body (which buffers
   // multipart bodies if multipart is toggled on at all) so `ctx.req` survives
@@ -208,6 +230,8 @@ _  /  / / / /___  ____/ /_  /  / / / /_/ /_  / / / /_/ /_  /_/ //  __/  /
       app
     )
   );
+  // SECURITY: absolute login lifetime bound to the login IP (CWE-613).
+  app.use(sessionLifetime());
 
   app.use(async (ctx, next) => {
     const ignoreUrls = ["/api/overview", "/api/files/status"];
@@ -243,11 +267,23 @@ _  /  / / / /___  ____/ /_  /  / / / /_/ /_  / / / /_/ /_  /_/ //  __/  /
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       setHeaders(res, filePath) {
         if (path.basename(filePath) === "index.html") res.setHeader("Cache-Control", "no-cache");
+        // SECURITY: uploaded files are user content on the panel's origin. Markup
+        // and script types are served as inert text in a CSP sandbox, so an
+        // uploaded plugin .html (or an old upstream upload) cannot run as the
+        // panel when opened directly (CWE-79, CWE-434). The plugin card reads
+        // the text and runs it in its sandboxed host frame.
+        if (isInertUpload(filePath)) {
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.setHeader("X-Content-Type-Options", "nosniff");
+          res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'");
+        }
       }
     })
   );
 
   mountRouters(app);
+  // SECURITY: PandorasWall, no middleware can be added after this point.
+  lockMiddlewareStack(app);
 
   process.on("uncaughtException", function (err) {
     logger.error(`ERROR (uncaughtException):`, err);

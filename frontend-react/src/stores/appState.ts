@@ -69,8 +69,22 @@ export function isLoggedIn(user: LoginUserInfo | null | undefined): boolean {
   return Number(user?.permission) > 0;
 }
 export function isAdminUser(user: LoginUserInfo | null | undefined): boolean {
-  return user?.permission === ROLE.ADMIN;
+  return Number(user?.permission) >= ROLE.ADMIN;
+}
+
+export function isWebAdminUser(user: LoginUserInfo | null | undefined): boolean {
+  return Number(user?.permission) >= ROLE.WEBADMIN;
+}
+
+/**
+ * Whether the user may use Web Admin-level features right now. Mirrors the
+ * panel's effectiveLevel(): plain admins qualify until enforcement is on.
+ */
+export function canUseWebAdmin(user: LoginUserInfo | null | undefined, enforced: boolean | undefined): boolean {
+  return enforced ? isWebAdminUser(user) : isAdminUser(user);
 }
 /** Hooks for components. */
 export const useIsAdmin = () => useAppState((s) => isAdminUser(s.userInfo));
+export const useIsWebAdmin = () => useAppState((s) => isWebAdminUser(s.userInfo));
+export const useCanWebAdmin = () => useAppState((s) => canUseWebAdmin(s.userInfo, s.settings.webAdminEnforced));
 export const useIsLogged = () => useAppState((s) => isLoggedIn(s.userInfo));

@@ -153,7 +153,7 @@ router.get("/remote_services", permission({ level: ROLE.ADMIN }), async (ctx) =>
 // add remote service
 router.post(
   "/remote_service",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ body: { apiKey: String, port: Number, ip: String, remarks: String } }),
   async (ctx) => {
     const parameter = ctx.request.body;
@@ -179,7 +179,7 @@ router.post(
 // Modify remote service parameters
 router.put(
   "/remote_service",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { uuid: String } }),
   async (ctx) => {
     const uuid = String(ctx.request.query.uuid);
@@ -241,7 +241,7 @@ router.put(
 // delete remote service
 router.delete(
   "/remote_service",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { uuid: String } }),
   async (ctx) => {
     const uuid = String(ctx.request.query.uuid);

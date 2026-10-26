@@ -139,7 +139,7 @@ router.post(
 // Update instance information (manage users)
 router.put(
   "/",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { daemonId: String, uuid: String } }),
   async (ctx) => {
     try {
@@ -164,7 +164,7 @@ router.put(
 // delete instance
 router.delete(
   "/",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { daemonId: String }, body: { uuids: Object, deleteFile: Boolean } }),
   async (ctx) => {
     try {
@@ -204,7 +204,7 @@ router.delete(
 
 // [Top-level Permission]
 // Open instance routing in batches
-router.post("/multi_open", permission({ level: ROLE.ADMIN }), async (ctx) => {
+router.post("/multi_open", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
   try {
     const instances = ctx.request.body;
     multiOperationForwarding(instances, async (daemonId: string, instanceUuids: string[]) => {
@@ -233,7 +233,7 @@ router.post("/multi_open", permission({ level: ROLE.ADMIN }), async (ctx) => {
 
 // [Top-level Permission]
 //Close instance routing in batches
-router.post("/multi_stop", permission({ level: ROLE.ADMIN }), async (ctx) => {
+router.post("/multi_stop", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
   try {
     const instances = ctx.request.body;
     multiOperationForwarding(instances, async (daemonId: string, instanceUuids: string[]) => {
@@ -262,7 +262,7 @@ router.post("/multi_stop", permission({ level: ROLE.ADMIN }), async (ctx) => {
 
 // [Top-level Permission]
 // batch terminate instance routing
-router.post("/multi_kill", permission({ level: ROLE.ADMIN }), async (ctx) => {
+router.post("/multi_kill", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
   try {
     const instances = ctx.request.body;
     multiOperationForwarding(instances, async (daemonId: string, instanceUuids: string[]) => {
@@ -289,7 +289,7 @@ router.post("/multi_kill", permission({ level: ROLE.ADMIN }), async (ctx) => {
 
 // [Top-level Permission]
 // restart instance routing in batches
-router.post("/multi_restart", permission({ level: ROLE.ADMIN }), async (ctx) => {
+router.post("/multi_restart", permission({ level: ROLE.WEBADMIN }), async (ctx) => {
   try {
     const instances = ctx.request.body;
     multiOperationForwarding(instances, async (daemonId: string, instanceUuids: string[]) => {
@@ -330,6 +330,8 @@ router.get("/quick_install_list", permission({ level: ROLE.USER }), async (ctx) 
       const filesDir = path.join(process.cwd(), SAVE_DIR_PATH);
       const fileName = ADDR?.split(SAVE_DIR_PATH)[1];
       const filePath = path.join(filesDir, fileName ?? "");
+      // SECURITY: the setting must name a file inside upload_files, not "../" out of it (CWE-22).
+      if (!path.resolve(filePath).startsWith(path.resolve(filesDir) + path.sep)) throw new Error("Invalid market file path");
       if (fs.existsSync(filePath)) {
         ctx.body = JSON.parse(await fs.readFile(filePath, "utf-8"));
       } else {
@@ -377,7 +379,7 @@ router.get("/quick_install_list", permission({ level: ROLE.USER }), async (ctx) 
 // forward request
 router.all(
   "/forward",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { target: String } }),
   async (ctx) => {
     const ADDR = String(ctx.query.target);

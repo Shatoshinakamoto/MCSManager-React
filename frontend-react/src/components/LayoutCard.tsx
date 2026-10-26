@@ -9,9 +9,10 @@
  * Errors show the message only, never a stack (CWE-209).
  */
 import { ExclamationCircleOutlined } from "@ant-design/icons";
-import { Typography } from "antd";
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Skeleton, Typography } from "antd";
+import { Component, Suspense, type ErrorInfo, type ReactNode } from "react";
 import { LAYOUT_CARD_TYPES, NotPortedCard } from "@/config/widgets";
+import { useLayoutContainer } from "@/stores/layoutContainer";
 import { t } from "@/lang/i18n";
 import type { LayoutCard as Card } from "@/types";
 import CardPanel from "./CardPanel";
@@ -26,6 +27,17 @@ class CardErrorBoundary extends Component<{ card: Card; children: ReactNode }, {
   }
   render() {
     if (!this.state.error) return this.props.children;
+    // Previews in the new-card dialog have no meta yet, so a failure there is expected (upstream CardError).
+    if (useLayoutContainer.getState().showNewCardDialog)
+      return (
+        <CardPanel title={this.props.card.title}>
+          <div className="flex justify-center align-center h-100">
+            <Typography.Paragraph style={{ maxWidth: 320, margin: "auto", textAlign: "center" }}>
+              <ExclamationCircleOutlined /> {t("TXT_CODE_450481c5")}
+            </Typography.Paragraph>
+          </div>
+        </CardPanel>
+      );
     return (
       <CardPanel title={this.props.card.title}>
         <div className="flex justify-center align-center h-100">
@@ -49,7 +61,16 @@ export default function LayoutCard({ card }: { card: Card }) {
   return (
     <div id={`layout-card-container-${card.id}`} className="layout-card-container transition-all-6 global-drag-animation" style={{ width: "100%", height: "100%" }}>
       <CardErrorBoundary card={card}>
-        <Widget card={card} />
+        {/* Widgets are lazy chunks (config/widgets.tsx); show the card frame while one loads. */}
+        <Suspense
+          fallback={
+            <CardPanel title={card.title}>
+              <Skeleton active paragraph={{ rows: 3 }} />
+            </CardPanel>
+          }
+        >
+          <Widget card={card} />
+        </Suspense>
       </CardErrorBoundary>
     </div>
   );

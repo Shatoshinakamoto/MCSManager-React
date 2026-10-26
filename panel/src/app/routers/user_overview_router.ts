@@ -6,14 +6,25 @@ import { ROLE } from "../entity/user";
 import { $t } from "../i18n";
 import permission from "../middleware/permission";
 import { getOperationLoggerOperator, operationLogger } from "../service/operation_logger";
+import { getUserFromCtx } from "../service/passport_service";
 import userSystem from "../service/user_service";
+import { assertCanGrant, assertCanManage, assertNotLastWebAdmin } from "../service/web_admin";
 
 const router = new Router({ prefix: "/auth" });
 
 // [Top-level Permission]
-router.put("/", permission({ level: ROLE.ADMIN }), async (ctx: Koa.ParameterizedContext) => {
+router.put("/", permission({ level: ROLE.WEBADMIN }), async (ctx: Koa.ParameterizedContext) => {
   const { uuid, config } = ctx.request.body;
   const { passWord } = config;
+  // SECURITY: Web Admin accounts and the Web Admin role are managed only by Web Admins (CWE-269).
+  const actor = getUserFromCtx(ctx);
+  const target = userSystem.getInstance(uuid);
+  assertCanManage(actor, target);
+  if (config?.permission != null && config.permission !== "" && typeof config.permission !== "boolean") {
+    const next = Number(config.permission);
+    if (target?.permission !== next) assertCanGrant(actor, next);
+    assertNotLastWebAdmin(target, next);
+  }
   if (passWord && !userSystem.validatePassword(passWord))
     throw new Error($t("TXT_CODE_router.user.passwordCheck"));
   try {
@@ -62,7 +73,7 @@ router.put("/", permission({ level: ROLE.ADMIN }), async (ctx: Koa.Parameterized
 // [Top-level Permission]
 router.get(
   "/overview",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   async (ctx: Koa.ParameterizedContext) => {
     const users: Array<ICompleteUser> = [];
     userSystem.objects.forEach((user) => {

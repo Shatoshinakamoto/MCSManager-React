@@ -72,7 +72,8 @@ router.get(
       ctx.request.query.instanceId
     }&from=sso`;
     if (UserSSOService.verifySSOToken(userName, token)) {
-      logger.warn("SSO login: username: %s, token: %s, redirect: %s", userName, token, redirect);
+      // SECURITY: never log the one-time SSO token (CWE-532); upstream did.
+      logger.warn("SSO login: username: %s, redirect: %s", userName, redirect);
       loginSuccess(ctx, userName);
       return ctx.redirect(redirect);
     } else {

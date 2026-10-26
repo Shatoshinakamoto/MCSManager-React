@@ -5,7 +5,8 @@ import { $t } from "../i18n";
 import permission from "../middleware/permission";
 import validator from "../middleware/validator";
 import { getOperationLoggerOperator, operationLogger } from "../service/operation_logger";
-import { register } from "../service/passport_service";
+import { getUserFromCtx, register } from "../service/passport_service";
+import { assertCanGrant, assertCanManage, assertNotLastWebAdmin } from "../service/web_admin";
 import userSystem from "../service/user_service";
 
 const router = new Router({ prefix: "/auth" });
@@ -13,12 +14,14 @@ const router = new Router({ prefix: "/auth" });
 // Add user
 router.post(
   "/",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ body: { username: String, password: String, permission: Number } }),
   async (ctx: Koa.ParameterizedContext) => {
     const userName = String(ctx.request.body.username);
     const passWord = String(ctx.request.body.password);
     const permission = Number(ctx.request.body.permission);
+    // SECURITY: only a Web Admin may create another Web Admin (CWE-269).
+    assertCanGrant(getUserFromCtx(ctx), permission);
     if (!userSystem.validatePassword(passWord))
       throw new Error($t("TXT_CODE_router.user.invalidPassword"));
     if (userSystem.existUserName(userName))
@@ -32,8 +35,16 @@ router.post(
 );
 
 // Delete user
-router.del("/", permission({ level: ROLE.ADMIN }), async (ctx: Koa.ParameterizedContext) => {
+router.del("/", permission({ level: ROLE.WEBADMIN }), async (ctx: Koa.ParameterizedContext) => {
   const uuids = ctx.request.body;
+  const actor = getUserFromCtx(ctx);
+  // Refuse the whole batch before deleting anything if it touches a Web Admin
+  // the caller may not manage, or would remove the last one.
+  for (const iterator of uuids) {
+    const target = userSystem.getUserByUuid(iterator);
+    assertCanManage(actor, target);
+    assertNotLastWebAdmin(target);
+  }
   try {
     for (const iterator of uuids) {
       const user = userSystem.getUserByUuid(iterator);
@@ -56,7 +67,7 @@ router.del("/", permission({ level: ROLE.ADMIN }), async (ctx: Koa.Parameterized
 // User search function
 router.get(
   "/search",
-  permission({ level: ROLE.ADMIN }),
+  permission({ level: ROLE.WEBADMIN }),
   validator({ query: { page: Number, page_size: Number } }),
   async (ctx: Koa.ParameterizedContext) => {
     // Fix parameter parsing - check if parameters exist before converting

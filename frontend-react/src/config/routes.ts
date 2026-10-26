@@ -16,13 +16,15 @@ export interface RouteMeta {
   onlyDisplayEditMode?: boolean;
   customClass?: string[];
   redirect?: (user: LoginUserInfo | null) => string;
+  /** Needs the Web Admin role once enforcement is on (panel routes at ROLE.WEBADMIN). */
+  webAdmin?: boolean;
 }
 
 export interface AppRoute {
   path: string;
   /** i18n key, or "" for the root. */
   nameKey: string;
-  view: "layout" | "login" | "install";
+  view: "layout" | "login" | "install" | "ssoBind";
   meta: RouteMeta;
   children?: AppRoute[];
 }
@@ -39,7 +41,7 @@ export const ROUTES: AppRoute[] = [
       mainMenu: true,
       permission: ROLE.USER,
       redirect: (user) => {
-        if (user?.permission === ROLE.ADMIN) return "/instances";
+        if (Number(user?.permission) >= ROLE.ADMIN) return "/instances";
         if (user?.permission && user.permission >= ROLE.USER) return "/customer";
         return "/login";
       }
@@ -70,25 +72,26 @@ export const ROUTES: AppRoute[] = [
   },
   { path: "/overview", nameKey: "TXT_CODE_84fbe277", view: "layout", meta: { mainMenu: true, permission: ROLE.ADMIN } },
   {
-    path: "/users", nameKey: "TXT_CODE_1deaa2dd", view: "layout", meta: { mainMenu: true, permission: ROLE.ADMIN },
-    children: [{ path: "/users/resources", nameKey: "TXT_CODE_236f70aa", view: "layout", meta: { permission: ROLE.ADMIN } }]
+    path: "/users", nameKey: "TXT_CODE_1deaa2dd", view: "layout", meta: { mainMenu: true, permission: ROLE.ADMIN, webAdmin: true },
+    children: [{ path: "/users/resources", nameKey: "TXT_CODE_236f70aa", view: "layout", meta: { permission: ROLE.ADMIN, webAdmin: true } }]
   },
   {
     path: "/node", nameKey: "TXT_CODE_e076d90b", view: "layout", meta: { mainMenu: true, permission: ROLE.ADMIN },
     children: [
       {
-        path: "/node/image", nameKey: "TXT_CODE_e6c30866", view: "layout", meta: { permission: ROLE.ADMIN },
-        children: [{ path: "/node/image/new", nameKey: "TXT_CODE_3d09f0ac", view: "layout", meta: { permission: ROLE.ADMIN } }]
+        path: "/node/image", nameKey: "TXT_CODE_e6c30866", view: "layout", meta: { permission: ROLE.ADMIN, webAdmin: true },
+        children: [{ path: "/node/image/new", nameKey: "TXT_CODE_3d09f0ac", view: "layout", meta: { permission: ROLE.ADMIN, webAdmin: true } }]
       }
     ]
   },
   { path: "/audit", nameKey: "TXT_CODE_ea1600d2", view: "layout", meta: { permission: ROLE.ADMIN } },
-  { path: "/settings", nameKey: "TXT_CODE_b5c7b82d", view: "layout", meta: { permission: ROLE.ADMIN, mainMenu: true, customClass: ["nav-button-success"] } },
+  { path: "/settings", nameKey: "TXT_CODE_b5c7b82d", view: "layout", meta: { permission: ROLE.ADMIN, mainMenu: true, webAdmin: true, customClass: ["nav-button-success"] } },
   { path: "/user", nameKey: "TXT_CODE_8c3164c9", view: "layout", meta: { permission: ROLE.ADMIN } },
   { path: "/404", nameKey: "TXT_CODE_393c816c", view: "layout", meta: { permission: ROLE.GUEST } },
   { path: "/customer", nameKey: "TXT_CODE_ec299306", view: "layout", meta: { permission: ROLE.USER, mainMenu: true, onlyDisplayEditMode: true } },
   { path: "/login", nameKey: "TXT_CODE_24873a8a", view: "login", meta: { permission: ROLE.GUEST, onlyDisplayEditMode: true, customClass: ["nav-button-warning"] } },
-  { path: "/_open_page", nameKey: "TXT_CODE_2cf59872", view: "layout", meta: { permission: ROLE.ADMIN, mainMenu: true, onlyDisplayEditMode: true, customClass: ["nav-button-warning"] } }
+  { path: "/_open_page", nameKey: "TXT_CODE_2cf59872", view: "layout", meta: { permission: ROLE.ADMIN, mainMenu: true, onlyDisplayEditMode: true, customClass: ["nav-button-warning"] } },
+  { path: "/sso/bind", nameKey: "TXT_CODE_SSO_BIND_TITLE", view: "ssoBind", meta: { permission: ROLE.GUEST } }
 ];
 
 export interface FlatRoute extends AppRoute {
@@ -110,6 +113,13 @@ export interface GuardState {
   isInstall: boolean;
   user: LoginUserInfo | null;
   isDesignMode: boolean;
+  /** Effective Web Admin enforcement from /api/auth/status. */
+  webAdminEnforced?: boolean;
+}
+
+/** True when the route is a Web Admin page and this user cannot use it right now. */
+export function isWebAdminLocked(route: AppRoute | undefined, user: LoginUserInfo | null, enforced?: boolean): boolean {
+  return !!route?.meta.webAdmin && !!enforced && Number(user?.permission) < ROLE.WEBADMIN;
 }
 
 /**
@@ -121,7 +131,7 @@ export function resolveNavigation(toPath: string, s: GuardState): string | null 
   const path = toPath.trim();
   const route = findRoute(path);
   const userPermission = s.user?.permission ?? 0;
-  const isAdmin = userPermission === ROLE.ADMIN;
+  const isAdmin = userPermission >= ROLE.ADMIN;
 
   if (!s.isInstall && path !== "/install") return "/install";
   if (route?.meta.redirect) return route.meta.redirect(s.user);
@@ -136,6 +146,7 @@ export function resolveNavigation(toPath: string, s: GuardState): string | null 
   if (!route) return "/404";
   if (!s.user?.token) return "/login";
 
+  if (isWebAdminLocked(route, s.user, s.webAdminEnforced)) return "/404";
   const pagePermission = route.meta.permission;
   if (pagePermission > userPermission && !isAdmin) return "/customer";
   return pagePermission <= userPermission || isAdmin ? null : "/404";

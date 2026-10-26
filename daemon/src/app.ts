@@ -1,7 +1,7 @@
 import fs from "fs-extra";
 import http from "http";
 import https from "https";
-import { removeTrail } from "mcsmanager-common";
+import { removeTrail, verifyIntegrityOrExit } from "mcsmanager-common";
 import path from "path";
 import { Server, Socket } from "socket.io";
 import { GOLANG_ZIP_PATH, LOCAL_PRESET_LANG_PATH, PTY_PATH } from "./const";
@@ -105,6 +105,9 @@ const io = new Server(httpServer, {
 // Initialize application instance system
 try {
   InstanceSubsystem.loadInstances();
+  // Johnnykins tamper check (common/src/tamper_check.ts). The fork's --dev
+  // bypass only applies to a daemon with no instances besides the global one.
+  verifyIntegrityOrExit({ name: "daemon", logger, devAllowed: InstanceSubsystem.getInstances().length <= 1 });
   logger.info($t("TXT_CODE_app.instanceLoad", { n: InstanceSubsystem.getInstances().length }));
 } catch (err) {
   logger.error($t("TXT_CODE_app.instanceLoadError"), err);

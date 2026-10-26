@@ -1,0 +1,93 @@
+# Browser tests for the React panel UI.
+#
+# Builds the panel with the React UI, starts it on a fresh data folder,
+# creates the first admin account with a random one-time password, and runs
+# the Playwright suite in frontend-react/e2e against it.
+#
+# SECURITY: the password is generated per run, kept in an environment
+# variable only, and masked in the log (CWE-798, CWE-532). The panel data
+# folder is thrown away with the runner.
+name: E2E MCSManager UI
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            common/package-lock.json
+            daemon/package-lock.json
+            panel/package-lock.json
+            frontend-react/package-lock.json
+
+      - name: Install dependencies and build common
+        run: |
+          chmod a+x ./install-dependents.sh
+          ./install-dependents.sh
+
+      - name: Build panel and React UI
+        run: |
+          npm --prefix common run build
+          npm --prefix panel run build
+          npm --prefix frontend-react run build
+          mkdir -p panel/production/public
+          cp -r frontend-react/dist/. panel/production/public/
+          find panel/production/public -name "*.map" -delete
+
+      - name: Start panel
+        working-directory: panel/production
+        run: |
+          nohup node app.js > "$RUNNER_TEMP/panel.log" 2>&1 &
+          for i in $(seq 1 60); do
+            curl -s -o /dev/null --max-time 2 http://localhost:23333/ && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/panel.log"
+          exit 1
+
+      - name: Create the first admin account
+        run: |
+          # Meets the panel rule: 9-36 chars with lower case, upper case and a digit.
+          PW="Aa1$(openssl rand -hex 12)"
+          echo "::add-mask::$PW"
+          echo "MCSM_E2E_PASSWORD=$PW" >> "$GITHUB_ENV"
+          echo "MCSM_E2E_USER=admin" >> "$GITHUB_ENV"
+          BODY=$(jq -n --arg u admin --arg p "$PW" '{username: $u, password: $p}')
+          curl -sf -X POST -H "Content-Type: application/json" -d "$BODY" http://localhost:23333/api/auth/install > /dev/null
+
+      - name: Install Playwright browser
+        working-directory: frontend-react
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        working-directory: frontend-react
+        run: npm run test:e2e
+
+      - name: Upload failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend-react/test-results
+            frontend-react/playwright-report
+          retention-days: 7

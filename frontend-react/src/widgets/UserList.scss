@@ -1,0 +1,21 @@
+/* Port of UserList.vue scoped styles. */
+.UserList {
+  .search-input {
+    transition: all 0.4s;
+    text-align: center;
+    width: 80%;
+
+    // ant-design-vue inputs inherit text-align; antd 6 resets it.
+    input {
+      text-align: center;
+    }
+
+    &:hover {
+      width: 100%;
+    }
+
+    @media (max-width: 992px) {
+      width: 100% !important;
+    }
+  }
+}

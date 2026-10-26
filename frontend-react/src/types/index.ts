@@ -52,12 +52,28 @@ export interface PanelStatus {
     allowChangeCmd?: boolean;
     panelId?: string;
     ssoEnabled?: boolean;
+    /** Effective: true only when enforcement is on and a Web Admin exists. */
+    webAdminEnforced?: boolean;
+    /** Public: the dev-tools blocker must load before login. */
+    devBlocker?: boolean;
   };
 }
 
 export interface UserInstance {
   instanceUuid: string;
   daemonId: string;
+  hostIp?: string;
+  remarks?: string;
+  status?: number;
+  nickname?: string;
+  ie?: string;
+  oe?: string;
+  endTime?: number | string;
+  lastDatetime?: number;
+  stopCommand?: string;
+  processType?: string;
+  docker?: Record<string, unknown>;
+  info?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -98,7 +114,22 @@ export const THEME_KEY = "THEME_KEY";
 
 /** Panel permission levels (same numbers as upstream ROLE). */
 export enum ROLE {
+  /** Web Admin/Owner (Johnnykins fork): admin plus panel settings, nodes, images and users when enforced. */
+  WEBADMIN = 20,
   ADMIN = 10,
   USER = 1,
-  GUEST = 0
+  GUEST = 0,
+  BAN = -1
+}
+
+/** Loose JSON object (upstream types JsonData = IJsonData from common/global.d.ts). */
+export type JsonData = IJsonData;
+export type MapData<T> = IMapData<T>;
+
+export type QuickStartTemplate = IQuickStartTemplate;
+export type QuickStartPackages = IQuickStartPackages;
+
+export interface LabelValueOption {
+  label: string;
+  value: string;
 }

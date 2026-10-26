@@ -1,0 +1,125 @@
+/* Port of the scoped styles in components/TerminalCore.vue. */
+.console-wrapper {
+  position: relative;
+
+  .error-card {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .error-card-container {
+      overflow: hidden;
+      max-width: 440px;
+      border: 1px solid var(--color-gray-6) !important;
+      background-color: var(--color-gray-1);
+      border-radius: 4px;
+      padding: 12px;
+      box-shadow: 0px 0px 2px var(--color-gray-7);
+    }
+
+    @media (max-width: 992px) {
+      .error-card-container {
+        max-width: 90vw !important;
+      }
+    }
+  }
+
+  .terminal-loading {
+    z-index: 12;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .terminal-button-group {
+    z-index: 11;
+    margin-right: 20px;
+    padding-bottom: 50px;
+    padding-left: 50px;
+    border-radius: 6px;
+    color: #fff;
+
+    &:hover ul {
+      transition: all 1s;
+      opacity: 0.8;
+    }
+
+    ul {
+      display: flex;
+      opacity: 0;
+      margin: 0;
+      padding: 0;
+
+      li {
+        cursor: pointer;
+        list-style: none;
+        padding: 5px;
+        margin-left: 5px;
+        border-radius: 6px;
+        font-size: 20px;
+
+        &:hover {
+          background-color: #3e3e3e;
+        }
+      }
+    }
+  }
+
+  .terminal-wrapper {
+    border: 1px solid var(--card-border-color);
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    background-color: #1e1e1e;
+    padding: 8px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+
+    .terminal-container {
+      height: 100%;
+    }
+  }
+
+  .command-input {
+    position: relative;
+
+    .history {
+      display: flex;
+      max-width: 100%;
+      overflow: scroll;
+      z-index: 10;
+      position: absolute;
+      top: -35px;
+      left: 0;
+      margin: 0;
+      padding: 0;
+
+      li {
+        list-style: none;
+        span {
+          padding: 3px 20px;
+          max-width: 300px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          cursor: pointer;
+        }
+      }
+
+      &::-webkit-scrollbar {
+        width: 0 !important;
+        height: 0 !important;
+      }
+    }
+  }
+
+  .terminal-design-tip {
+    color: rgba(255, 255, 255, 0.584);
+  }
+}
