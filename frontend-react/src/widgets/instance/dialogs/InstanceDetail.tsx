@@ -24,6 +24,7 @@ import {
   openPortEditDialog,
   openVolumeEditDialog
 } from "@/components/fc/DockerEditDialogs";
+import { openCmdAssistantDialog } from "@/components/fc/CmdAssistantDialog";
 import { openUploadFileDialog } from "@/components/fc/UploadFileDialog";
 import SafeHtml from "@/components/SafeHtml";
 import { GLOBAL_INSTANCE_NAME } from "@/config/const";
@@ -422,14 +423,20 @@ function InstanceDetailDialog(props: Props) {
             </span>
           }
         >
-          <Input.TextArea
-            value={cfg.startCommand}
-            rows={5}
-            style={{ minHeight: 40 }}
-            status={err(String(cfg.startCommand ?? "").includes("\n"))}
-            placeholder={isDocker ? t("TXT_CODE_98e7c829") : t("TXT_CODE_f50cfe2")}
-            onChange={(e) => set({ startCommand: e.target.value })}
-          />
+          {/* Johnnykins fork: the command assistant button beside the field. */}
+          <Space.Compact block style={{ display: "flex" }}>
+            <Input.TextArea
+              value={cfg.startCommand}
+              rows={5}
+              style={{ minHeight: 40 }}
+              status={err(String(cfg.startCommand ?? "").includes("\n"))}
+              placeholder={isDocker ? t("TXT_CODE_98e7c829") : t("TXT_CODE_f50cfe2")}
+              onChange={(e) => set({ startCommand: e.target.value })}
+            />
+            <Button style={{ height: "auto" }} onClick={() => void openCmdAssistantDialog().then((cmd) => cmd && set({ startCommand: cmd }))}>
+              {t("TXT_CODE_2728d0d4")}
+            </Button>
+          </Space.Compact>
         </Item>
       </Col>
       <Col xs={24} md={12}>

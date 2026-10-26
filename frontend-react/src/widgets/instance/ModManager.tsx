@@ -507,7 +507,7 @@ export default function ModManager({ card }: { card: LayoutCard }) {
                   type="warning"
                   showIcon
                   className="mb-4 mt-2 mod-manager-alert"
-                  message={
+                  title={
                     <div className="text-left">
                       <div className="font-bold">{t("TXT_CODE_MOD_WIN_FILE_LOCK_TITLE")}</div>
                       <div className="text-xs opacity-80 font-normal mt-1">{t("TXT_CODE_MOD_WIN_RUNNING_ALERT")}</div>

@@ -111,7 +111,7 @@ export default function MusicCard({ card }: WidgetProps) {
       <CardPanel
         title={card.title}
         bodyDesign={
-          <Space align="center" direction="vertical" className="w-100 h-100 edit">
+          <Space align="center" orientation="vertical" className="w-100 h-100 edit">
             <h2>{t("TXT_CODE_c2697552")}</h2>
             <Space>
               <Button type="primary" onClick={() => void uploadFile()}>

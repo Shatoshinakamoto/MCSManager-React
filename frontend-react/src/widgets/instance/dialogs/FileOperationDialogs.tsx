@@ -54,13 +54,13 @@ function ZipDialog({ done }: { done: (v?: string) => void }) {
   return (
     <Shell open={open} title={t("TXT_CODE_f8a15a94")} onOk={ok} onCancel={() => close()}>
       <p>{t("TXT_CODE_366bad15")}</p>
-      <Space direction="vertical" className="w-100">
+      <Space orientation="vertical" className="w-100">
         <Space.Compact className="w-100">
           <Input autoFocus value={value} placeholder={t("TXT_CODE_366bad15")} onChange={(e) => setValue(e.target.value)} onPressEnter={ok} />
           <Space.Addon>. zip</Space.Addon>
         </Space.Compact>
       </Space>
-      <Space direction="vertical" className="w-100 mt-16">
+      <Space orientation="vertical" className="w-100 mt-16">
         <Typography.Text>{t("TXT_CODE_92ebdc7f")}</Typography.Text>
       </Space>
     </Shell>
@@ -86,7 +86,7 @@ function UnzipDialog({ done }: { done: (v?: UnzipOptions) => void }) {
   return (
     <Shell open={open} title={t("TXT_CODE_7669fd3f")} onOk={ok} onCancel={() => close()}>
       <p></p>
-      <Space direction="vertical" className="w-100">
+      <Space orientation="vertical" className="w-100">
         <Typography.Title level={5}>{t("TXT_CODE_a6453188")}</Typography.Title>
         <Radio.Group optionType="button" value={opts.mode} onChange={(e) => setOpts({ ...opts, mode: e.target.value })}>
           <Radio.Button value="0">{t("TXT_CODE_7907c99")}</Radio.Button>
@@ -94,7 +94,7 @@ function UnzipDialog({ done }: { done: (v?: UnzipOptions) => void }) {
         </Radio.Group>
         {opts.mode == "1" && <Input value={opts.dir} placeholder={t("TXT_CODE_377e5535")} onChange={(e) => setOpts({ ...opts, dir: e.target.value })} />}
       </Space>
-      <Space direction="vertical" className="w-100 mt-16">
+      <Space orientation="vertical" className="w-100 mt-16">
         <Typography.Title level={5}>{t("TXT_CODE_2841f4a")}</Typography.Title>
         {getCurrentLang() == "zh_cn" && (
           <Typography.Text type="secondary">
@@ -134,7 +134,7 @@ function PermissionDialog({ initial, done }: { initial: PermissionData; done: (v
   return (
     <Modal open={open} title={t("TXT_CODE_16853efe")} style={{ maxWidth: 400 }} onOk={() => close({ data, deep })} onCancel={() => close()} destroyOnHidden>
       <p></p>
-      <Space direction="vertical" className="w-100 select-none">
+      <Space orientation="vertical" className="w-100 select-none">
         <Spin spinning={false}>
           <div className="flex-between permission">
             {ROLES.map((item) => (

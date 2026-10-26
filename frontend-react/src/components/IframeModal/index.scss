@@ -1,0 +1,25 @@
+// Styles copied from components/IframeModal/index.vue (scoped there).
+.iframe-modal {
+  .ant-modal-body {
+    padding: 0;
+    height: 100%;
+  }
+
+  .ant-modal-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ant-modal-header {
+    flex-shrink: 0;
+  }
+}
+
+.iframe-modal-content {
+  width: 100%;
+  height: 80vh;
+  min-height: 600px;
+  overflow: hidden;
+  padding: 14px 0;
+}

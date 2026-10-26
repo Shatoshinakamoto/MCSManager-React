@@ -2,6 +2,21 @@
 
 Entries follow the template in the project's secure development standards. Newest first.
 
+## 2026-10-26 - Framed-page message bridge locked to allowed origins
+- **Type:** hardening (port of an upstream component that is not opened yet)
+- **CVE / CWE / advisory:** none; CWE-346, CWE-940, CWE-284, CWE-1021
+- **Severity:** not CVSS-scored; would be high if a page ever used upstream's version with an untrusted address, because any framed page could ask for the user's API key. Not reachable in upstream or this port today.
+- **Affected:** `frontend-react/src/components/IframeBox/config.ts`, `handler.ts`, `index.tsx`, `frontend-react/src/components/IframeModal/index.tsx`.
+- **What changed (against upstream `components/IframeBox`):**
+  - The bridge is off unless the caller turns it on and the framed page is on the panel's origin or in `allowedOrigins`. Each message must come from that frame's window and that origin; replies go to that origin, not `*`.
+  - Handler names are looked up as own properties only, so `constructor` or `__proto__` cannot be called.
+  - `MainAppInfo` and `GetRemoteAppDaemons` ask the user before turning on an API key; upstream did it silently.
+  - `OpenNewIframePage` opens http(s) addresses only and keeps the same allow-list.
+  - The frame is sandboxed like the iframe card (no navigation of the panel tab) and sends no referrer.
+- **Why it is secure now:** a page can only reach the bridge if an admin-written caller names its origin, and the user still decides whether it gets an API key (ASVS V14.5.2, NIST AC-3). Panel calls are authorised by the panel as before.
+- **Residual risk:** a page on an allowed origin that the user lets have an API key can use the panel as that user until the key is turned off in the profile.
+- **Verification:** 5 unit tests in `src/__tests__/leftovers.test.tsx` (origin rules, hostile handler names, reply origin, no listener while off or not allowed).
+
 ## 2026-10-26 - "Run As" limited to Web Admins and root daemons; daemon HTTP hardening
 - **Type:** hardening (new controls on an upstream feature, plus fork port)
 - **CVE / CWE / advisory:** none; CWE-250, CWE-269, CWE-88, CWE-78, CWE-79, CWE-770, CWE-348

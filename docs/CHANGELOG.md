@@ -49,6 +49,9 @@ Base: upstream MCSManager commit `ad4f903` (2026-10-24, panel 10.22.0, daemon 4.
 - From the Johnnykins fork (second audit): daemon switches `instanceMasterConfig.ptyAccess`, `openFrpAccess`, `mcStatus`; daemon HTTP hardening `johnnykins.http` (security headers, CORS allow-list, rate limiter) and `johnnykins.pandorasWall`; panel `johnnykins.remoteService.heartbeatIntervalMs` and `localDaemonRetryMs`, editable in Settings > Daemon Passport. ([daemon](configuration/daemon-johnnykins.md), [panel](configuration/panel-johnnykins.md))
 - Daemon `info/overview` reports `runAs` (whether it can switch accounts, and its account limits).
 - Tests: 7 daemon and 4 panel tests for "Run As", 5 for the daemon HTTP hardening, 4 for the UI field.
+- React UI leftover sweep: every Vue component upstream ships but does not open is now ported: command assistant (back as the **Command Helper** button beside the start command, as in the Johnnykins fork), Docker version choice, the older ping dialog, framed-page box and dialog with its message bridge, `NoPreviewCard`, `TextContainer`, `TerminalTags`, `Empty`, the `queryAsyncTask` API, and the "terminal could not start" and "mappings not available" notices. ([docs](features/react-frontend.md#vue-components-upstream-ships-but-does-not-open))
+- Browser test `e2e/full.spec.ts`: a real run against a live panel and daemon that creates an instance, opens every route (including the instance pages), starts it, sends a console line and reads it back, uses the Command Helper and every Instance Settings tab, creates a file and sees it in the file manager, then deletes the instance. Fails on page errors, console errors, 5xx answers, "not ported" text and cards stuck loading. ([docs](commands/frontend-react.md))
+- Tests: 16 for the leftover ports, including hostile messages to the iframe bridge.
 
 ### Changed
 - A root daemon logs a warning at startup while `johnnykins.runAs.defaultUser` is empty.
@@ -67,6 +70,9 @@ Base: upstream MCSManager commit `ad4f903` (2026-10-24, panel 10.22.0, daemon 4.
 - Panel CSP: the `'unsafe-eval'` fallback for frontends without the `mcsm-csp` strict marker. A non-React `index.html` now only logs a startup warning.
 
 ### Fixed
+- Downloads and bundles were missing `frontend-react/src/widgets/logs/` (the operation-log card), so `npm run dev` and the build failed with `Failed to resolve import "@/widgets/logs/OperationLogCard"`. The root `.gitignore` rule `logs` matched the source folder; it is now excluded from that rule. Releases are now checked by building a clean `git archive` copy.
+- React UI: deprecated antd 6 props (`Timeline` `items.children`, `Space` `direction`, `Alert` `message`) replaced, which removes the dev-server console warnings.
+- Browser tests: the login helper waited only for the URL to leave `/login`, then raced the `/` to `/instances` redirect on the slower dev server. The panel header checks now skip on the Vite dev server, which does not send them.
 - Daemon: a Web Admin (permission 20) could not use the Minecraft quick install or reinstall from the market, because the daemon only accepted permission 10 for those tasks.
 - React UI: right after login, the login animation's delayed redirect could pull the user back to the dashboard after they had already opened another page. Found by the new browser tests. Same fix on the SSO bind page.
 - React Settings: leaving the page navigated straight back to it (the `?tab=` cleanup ran against the old route).

@@ -25,7 +25,7 @@ export default function NodeRemoteMappingEdit({ value, onChange }: Props) {
   }
 
   const side = (index: number, m: RemoteMapping, s: "from" | "to") => (
-    <Space direction="vertical">
+    <Space orientation="vertical">
       {t("TXT_CODE_54312194")}
       <Row gutter={8}>
         <Col span={15}>

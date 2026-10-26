@@ -118,7 +118,7 @@ export default function SsoBind() {
                 type="info"
                 showIcon
                 className="mb-20"
-                message={
+                title={
                   <>
                     {t("TXT_CODE_SSO_BIND_CURRENT_HINT")} <strong>{loggedInUserName}</strong>
                   </>

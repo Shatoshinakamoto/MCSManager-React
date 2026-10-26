@@ -11,8 +11,9 @@
  * with the one-time password the panel issues for this instance.
  */
 import { CheckOutlined, CloseOutlined, InfoCircleOutlined, UploadOutlined } from "@ant-design/icons";
-import { App, Button, Col, Input, Row, Select, Switch, Typography, Upload } from "antd";
+import { App, Button, Col, Input, Row, Select, Space, Switch, Typography, Upload } from "antd";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { openCmdAssistantDialog } from "@/components/fc/CmdAssistantDialog";
 import { getFileConfigAddr } from "@/hooks/useFileManager";
 import { instanceTypeTranslation, TYPE_MINECRAFT_BUNGEECORD } from "@/hooks/useInstance";
 import { QUICKSTART_ACTION_TYPE, QUICKSTART_METHOD } from "@/hooks/quickStartFlow";
@@ -244,9 +245,13 @@ export default function CreateInstanceForm({
           title={t("TXT_CODE_d12fa808")}
           desc={createMethod === QUICKSTART_METHOD.IMPORT ? t("TXT_CODE_17544b7b") : isDocker ? t("TXT_CODE_26495d02") : t("TXT_CODE_8c0db3f4")}
         >
-          <div style={{ display: "flex" }}>
+          {/* Johnnykins fork: the command assistant button beside the field. */}
+          <Space.Compact block style={{ display: "flex" }}>
             <Input.TextArea value={cfg.startCommand} rows={2} placeholder={t("TXT_CODE_d4ad1dd")} style={{ minHeight: 30 }} onChange={(e) => set("startCommand", e.target.value)} />
-          </div>
+            <Button style={{ height: "auto" }} onClick={() => void openCmdAssistantDialog().then((cmd) => cmd && set("startCommand", cmd))}>
+              {t("TXT_CODE_2728d0d4")}
+            </Button>
+          </Space.Compact>
         </Field>
 
         <Field title={t("TXT_CODE_2e2c6b7b")} desc={<span className="typography-text-ellipsis">{t("TXT_CODE_4f387c5a")}</span>}>

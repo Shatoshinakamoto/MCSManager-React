@@ -20,7 +20,9 @@ export async function login(page: Page): Promise<void> {
   await page.locator("input[name=mcsm-name-input]").fill(E2E_USER);
   await page.locator("input[name=mcsm-pw-input]").fill(E2E_PASSWORD);
   await page.keyboard.press("Enter");
-  await expect(page).not.toHaveURL(/#\/login/, { timeout: 20_000 });
+  // Wait for the landing page itself: "/" redirects on to /instances or
+  // /customer a moment later, and navigating before that would be undone.
+  await expect(page).toHaveURL(/#\/(?!login)[a-z]/, { timeout: 20_000 });
 }
 
 /** Records uncaught page errors and any request URL carrying a session token. */

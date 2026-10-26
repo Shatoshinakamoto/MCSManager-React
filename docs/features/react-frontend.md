@@ -35,8 +35,24 @@ Boot order matches `main.ts`: panel status, language, layout config, then lazy-l
 | 3 | Admin: settings (with the Daemon Passport and Additional Security panes), users, permissions and the Web Admin role, images (Docker), audit log, market, market editor and quick start; fork features (dev-tools blocker, tamper check, artwork); SSO bind page, upload bubble | done |
 | 4 | Decorative cards (image, iframe, text, link, clock, carousel, music, plugin); cutover: build, install, dev and CI scripts use `frontend-react/`, CSP has no eval fallback | done |
 | 5 | Parity sweep: every upstream component, route, settings option and translation key checked; renewal dialog, card preview notice, manual copy, broken-instance notice | done |
+| 8 | Leftover sweep: every Vue component, API definition and string, including ones upstream no longer opens | done |
 
 `PORT_STATUS` in `src/config/widgets.tsx` tracks every widget type.
+
+### Vue components upstream ships but does not open
+Ported in the leftover sweep so the React UI has every Vue component. Tests: `src/__tests__/leftovers.test.tsx`.
+
+| Vue file | React port | Where it is used |
+|---|---|---|
+| `components/fc/CmdAssistantDialog/` (index, AnyAppForm, MinecraftJavaForm) and `hooks/useGenerateStartCmd.ts` | `components/fc/CmdAssistantDialog/`, `hooks/startCmdBuilder.ts` | **Command Helper** button beside the start command in Instance Settings and the new-instance form, as in the Johnnykins fork and upstream 10.2.1 |
+| `components/fc/DockerVersionSelectDialog.vue` | `components/fc/DockerVersionSelectDialog.tsx` (`openDockerVersionSelectDialog`) | Not opened yet (upstream neither) |
+| `widgets/instance/dialogs/PingConfig.vue` | `widgets/instance/dialogs/PingConfig.tsx` (`openPingConfigDialog`) | Not opened; its button is commented out upstream and in the fork. The instance menu opens `McPingSettings` |
+| `components/IframeBox/` (index, config, handler) and `components/IframeModal/` | same paths, `.tsx`/`.ts` | Not opened yet (upstream neither) |
+| `components/NoPreviewCard.vue`, `TextContainer.vue`, `TerminalTags.vue`, `Empty.vue` | same names in `components/` | Not used yet (upstream neither) |
+| `services/apis/instance.ts` `queryAsyncTask` | same name | Not called (upstream neither) |
+| Strings `TXT_CODE_42bcfe0c` (terminal could not start) and `TXT_CODE_48c291c1` (panel too old for address mappings) | `TerminalCore.tsx`, `NodeDetailDialog.tsx` | Shown in the same cases as upstream |
+
+Fixes over upstream in these ports: the Minecraft "additional parameters" field is used as typed (upstream ignored edits), no trailing space after a program without parameters, and the iframe bridge checks the sender's origin and replies only to it (upstream answered any framed page and replied to `*`).
 
 ## 3. How it is secure
 Threat model: the UI is a client of an authenticated panel. Attacker inputs are panel data authored by other users (layout JSON, login Markdown, SSO icon URL, background URL, instance output) and URL parameters.
@@ -83,7 +99,7 @@ Checked with `npm audit` on 2026-10-25: 0 vulnerabilities. All versions pinned e
 
 ## 6. Limitations and known risks
 - Plugin cards are isolated frames. Old upstream plugins run through the Old plugin API mode ([legacy-plugins.md](legacy-plugins.md)); plugins that changed panel state or used the panel's `window` cannot.
-- Not ported on purpose, because upstream never uses them: `CmdAssistantDialog`, `DockerVersionSelectDialog`, `PingConfig` (replaced by the ping settings dialog), `IframeBox` (business iframe bridge; it would also hand the user's API key to an embedded page), `NoPreviewCard`, `TextContainer`, `TerminalTags`.
+- Components upstream ships but never opens are ported too, so nothing from the Vue UI is lost (see the leftover table above). The framed-page bridge (`components/IframeBox/`) is off unless a caller allows the page's origin, and asks the user before it hands out an API key.
 - Translations: every key added by this port exists in all 12 languages.
 - The Vue `frontend/` is kept unbuilt as the porting reference; upstream changes there must be ported by hand.
 - jsdom 30 warns that it wants Node >= 22.22.2 (tests still pass on 22.22.0).

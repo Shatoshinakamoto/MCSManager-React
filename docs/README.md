@@ -8,7 +8,7 @@
 | [features/run-as-user.md](features/run-as-user.md) | Running instances as another OS account: Web Admin only, root daemon only, allowed and default accounts |
 | [upgrade-guide.md](upgrade-guide.md) | Moving an existing upstream or Johnnykins install to this port |
 | [features/legacy-plugins.md](features/legacy-plugins.md) | Running old plugin-card plugins through the sandboxed host and read-only bridge |
-| [features/react-frontend.md](features/react-frontend.md) | The React port of the web UI: architecture, parity rules, port phases |
+| [features/react-frontend.md](features/react-frontend.md) | The React port of the web UI: architecture, parity rules, port phases, ported Vue leftovers |
 | [features/passport-auth.md](features/passport-auth.md) | Panel/daemon passport auth with `standard` and `johnnykins-legacy` modes |
 | [features/johnnykins-sanitizer.md](features/johnnykins-sanitizer.md) | Command sanitizer profiles and differences from the fork |
 | [configuration/daemon-johnnykins.md](configuration/daemon-johnnykins.md) | Daemon `johnnykins` settings: passport, bans, sanitizer, feature gates |

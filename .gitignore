@@ -1,5 +1,7 @@
 # Logs
 logs
+# ...but not the React UI's operation-log widget folder (source code).
+!frontend-react/src/widgets/logs/
 *.log
 FINDINGS.html
 npm-debug.log*

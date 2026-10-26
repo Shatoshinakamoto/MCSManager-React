@@ -62,7 +62,10 @@ export default function TerminalCore({ instanceId, daemonId, height, terminal }:
       }
     });
 
-    if (!isDesignMode && termRef.current) session.initTerminalWindow(termRef.current);
+    if (!isDesignMode) {
+      if (termRef.current) session.initTerminalWindow(termRef.current);
+      else reportErrorMsg(t("TXT_CODE_42bcfe0c"));
+    }
     session.connect(daemonId, instanceId).catch((error: unknown) => {
       reportErrorMsg(error);
       setSocketError(error instanceof Error ? error : new Error(String(error)));

@@ -646,7 +646,7 @@ export default function Settings({ card }: WidgetProps) {
         </Field>
         {passport.mode === "off" && (
           // SECURITY-WARNING: "off" falls back to the shared daemon key alone, with no mutual authentication.
-          <Alert className="mb-24" type="warning" showIcon style={{ maxWidth: 640 }} message={t("TXT_CODE_JK_MODE_OFF")} />
+          <Alert className="mb-24" type="warning" showIcon style={{ maxWidth: 640 }} title={t("TXT_CODE_JK_MODE_OFF")} />
         )}
         <Field title={t("TXT_CODE_JK_TIMEOUT")} desc={t("TXT_CODE_JK_TIMEOUT_DESC")}>
           <InputNumber

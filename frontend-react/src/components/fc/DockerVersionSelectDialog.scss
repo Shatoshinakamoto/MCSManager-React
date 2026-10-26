@@ -1,0 +1,39 @@
+// Styles copied from components/fc/DockerVersionSelectDialog.vue (scoped there).
+.DockerVersionSelectDialog {
+  .desc {
+    margin-bottom: 16px;
+  }
+
+  .cards {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .choose-card {
+    flex: 1;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .choose-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-action {
+    margin-top: 16px;
+    text-align: right;
+  }
+}
+
+@media (max-width: 640px) {
+  .DockerVersionSelectDialog .cards {
+    flex-direction: column;
+  }
+}

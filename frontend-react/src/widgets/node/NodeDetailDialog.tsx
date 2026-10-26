@@ -18,7 +18,8 @@ type Data = {
   ip: string; port: number | string; prefix: string; remarks: string; apiKey: string; language: string;
   uploadSpeedRate: number; downloadSpeedRate: number; maxDownloadFromUrlFileCount: number | string;
   portRangeStart: number; portRangeEnd: number; portAssignInterval: number; daemonPort: number | string;
-  remoteMappings: RemoteMapping[]; outputBufferSize: number | string; enableSoftShutdown: boolean;
+  /** Missing when the panel predates address mappings (upstream shows a notice then). */
+  remoteMappings?: RemoteMapping[]; outputBufferSize: number | string; enableSoftShutdown: boolean;
   softShutdownSkipDocker: boolean; softShutdownWaitSeconds: number | string;
 };
 
@@ -72,7 +73,7 @@ const NodeDetailDialog = forwardRef<NodeDetailDialogHandle>(function NodeDetailD
           port: n.port,
           daemonPort: n.config?.port ?? 24444,
           apiKey: "",
-          remoteMappings: n.remoteMappings ?? []
+          remoteMappings: n.remoteMappings
         };
         setData(next);
         form.setFieldsValue(next);
@@ -207,7 +208,11 @@ const NodeDetailDialog = forwardRef<NodeDetailDialogHandle>(function NodeDetailD
         t("TXT_CODE_bbe23ee7"),
         sec("TXT_CODE_497568db"),
         <Card>
-          <NodeRemoteMappingEdit value={data.remoteMappings} onChange={(v) => patch({ remoteMappings: v })} />
+          {data.remoteMappings ? (
+            <NodeRemoteMappingEdit value={data.remoteMappings} onChange={(v) => patch({ remoteMappings: v })} />
+          ) : (
+            <Typography.Text type="secondary">{t("TXT_CODE_48c291c1")}</Typography.Text>
+          )}
         </Card>
       )}
     </Form>

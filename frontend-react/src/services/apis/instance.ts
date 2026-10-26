@@ -233,3 +233,27 @@ export const createAsyncTask = defineApi<
   },
   { instanceConfig: IGlobalInstanceConfig; instanceStatus: number; instanceUuid: string; status: number; taskId: string }
 >({ url: "/api/protected_instance/asynchronous", method: "POST" });
+
+/**
+ * Status of a daemon async task such as quick_install (port of upstream
+ * queryAsyncTask). Upstream defines it but its UI polls the task list
+ * instead; kept for parity. Admin only on the panel.
+ */
+export const queryAsyncTask = defineApi<
+  {
+    params: { daemonId: string; uuid: string; task_name: string };
+    data: { taskId: string };
+  },
+  {
+    taskId: string;
+    status: number;
+    detail: {
+      instanceConfig: IGlobalInstanceConfig;
+      instanceStatus: number;
+      instanceUuid: string;
+      status: number;
+      taskId: string;
+      downloadProgress?: { percentage: number; downloadedBytes: number; totalBytes: number; speed: number; eta: number };
+    };
+  }
+>({ url: "/api/protected_instance/query_asynchronous", method: "POST" });
